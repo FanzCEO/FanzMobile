@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 4%; /* #0A0A0E */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 240 6% 10%; /* #1A1A1F */
+    --card-foreground: 0 0% 100%;
+    --popover: 240 6% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 221 83% 59%; /* #2D6FFF */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 65% 68%; /* #A45CFF */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 5% 26%;
+    --muted-foreground: 240 5% 55%; /* #8B8B9A */
+    --accent: 190 100% 60%; /* #33E6FF */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 348 100% 60%; /* #FF3366 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 15%;
+    --input: 240 6% 15%;
+    --ring: 221 83% 59%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply backdrop-blur-xl bg-card/50 border border-white/10;
+  }
+  
+  .neon-glow-blue {
+    box-shadow: 0 0 20px rgba(45, 111, 255, 0.3);
+  }
+  
+  .neon-glow-violet {
+    box-shadow: 0 0 20px rgba(164, 92, 255, 0.3);
+  }
+  
+  .neon-glow-cyan {
+    box-shadow: 0 0 20px rgba(51, 230, 255, 0.3);
+  }
+  
+  .gradient-primary {
+    background: linear-gradient(135deg, #2D6FFF 0%, #A45CFF 100%);
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(135deg, #33E6FF 0%, #2D6FFF 100%);
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #2D6FFF 0%, #A45CFF 100%);
+  }
+}
+
+/* AI Orb Animation */
+@keyframes orb-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes orb-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orb-pulse {
+  animation: orb-pulse 2s ease-in-out infinite;
+}
+
+.orb-rotate {
+  animation: orb-rotate 3s linear infinite;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(45, 111, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 111, 255, 0.5);
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 111, 255, 0.3) rgba(255, 255, 255, 0.05);
+}
