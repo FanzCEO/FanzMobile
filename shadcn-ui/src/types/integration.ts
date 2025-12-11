@@ -1,4 +1,4 @@
-export type IntegrationProvider = 'google_calendar' | 'outlook' | 'twilio' | 'rm_chat';
+export type IntegrationProvider = 'google_calendar' | 'outlook' | 'twilio' | 'telnyx' | 'telegram' | 'rm_chat' | 'whatsapp';
 
 export interface Integration {
   id: string;

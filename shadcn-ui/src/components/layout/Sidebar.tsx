@@ -1,18 +1,30 @@
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  Users, 
-  Calendar, 
-  Workflow, 
-  Plug, 
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  Calendar,
+  Workflow,
+  Plug,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  User,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { useAuth } from '@/lib/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -21,12 +33,24 @@ const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Workflows', href: '/workflows', icon: Workflow },
   { name: 'Integrations', href: '/integrations', icon: Plug },
+  { name: 'Import', href: '/import', icon: Upload },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const { user, clearAuth } = useAuth();
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login');
+  };
+
+  const userInitial = user?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U';
+  const displayName = user?.full_name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = user?.email || 'user@example.com';
 
   return (
     <div 
@@ -81,20 +105,46 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* User Info */}
-        {!collapsed && (
-          <div className="p-4 border-t border-white/10">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <span className="text-sm font-bold">U</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">User</p>
-                <p className="text-xs text-muted-foreground truncate">user@example.com</p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* User Info with Dropdown */}
+        <div className="p-4 border-t border-white/10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer w-full text-left",
+                  collapsed && "justify-center"
+                )}
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-bold">{userInitial}</span>
+                </div>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{displayName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Edit Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );

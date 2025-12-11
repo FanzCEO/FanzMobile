@@ -1,46 +1,212 @@
-import { useQuery } from '@tanstack/react-query';
-import { Plug, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+
+interface IntegrationConfig {
+  provider: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  price: string;
+  fields: { name: string; label: string; placeholder: string; type?: string }[];
+  configEndpoint?: string;
+}
+
+const INTEGRATION_CONFIGS: IntegrationConfig[] = [
+  {
+    provider: 'telegram',
+    name: 'Telegram Bot',
+    description: 'FREE unlimited messaging via Telegram. Create a bot at @BotFather',
+    icon: <Send className="h-8 w-8 text-blue-400" />,
+    price: 'FREE',
+    fields: [
+      { name: 'bot_token', label: 'Bot Token', placeholder: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11', type: 'password' },
+    ],
+    configEndpoint: '/integrations/telegram/configure',
+  },
+  {
+    provider: 'telnyx',
+    name: 'Telnyx SMS',
+    description: 'Cheap SMS at $0.004/msg (75% cheaper than Twilio)',
+    icon: <MessageSquare className="h-8 w-8 text-green-400" />,
+    price: '$0.004/msg',
+    fields: [
+      { name: 'api_key', label: 'API Key', placeholder: 'KEY01234567890ABCDEF', type: 'password' },
+      { name: 'phone_number', label: 'Telnyx Phone Number', placeholder: '+1234567890' },
+      { name: 'messaging_profile_id', label: 'Messaging Profile ID (optional)', placeholder: '12345678-1234-1234-1234-123456789012' },
+    ],
+    configEndpoint: '/integrations/telnyx/configure',
+  },
+  {
+    provider: 'whatsapp',
+    name: 'WhatsApp Business',
+    description: 'Free for first 1000 msgs/month via Meta Business API',
+    icon: <Phone className="h-8 w-8 text-green-500" />,
+    price: 'FREE tier',
+    fields: [
+      { name: 'phone_number_id', label: 'Phone Number ID', placeholder: 'Your WhatsApp Phone Number ID' },
+      { name: 'access_token', label: 'Access Token', placeholder: 'Your Meta Access Token', type: 'password' },
+      { name: 'verify_token', label: 'Webhook Verify Token', placeholder: 'A custom verify token' },
+    ],
+    configEndpoint: '/integrations/whatsapp/configure',
+  },
+  {
+    provider: 'twilio',
+    name: 'Twilio SMS',
+    description: 'Premium SMS service, most reliable but expensive',
+    icon: <MessageSquare className="h-8 w-8 text-red-500" />,
+    price: '$0.0079/msg',
+    fields: [
+      { name: 'account_sid', label: 'Account SID', placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+      { name: 'auth_token', label: 'Auth Token', placeholder: 'Your Twilio Auth Token', type: 'password' },
+      { name: 'phone_number', label: 'Twilio Phone Number', placeholder: '+1234567890' },
+    ],
+    configEndpoint: '/integrations/twilio/configure',
+  },
+  {
+    provider: 'google_calendar',
+    name: 'Google Calendar',
+    description: 'Sync events with Google Calendar',
+    icon: <Calendar className="h-8 w-8 text-blue-500" />,
+    price: 'FREE',
+    fields: [],
+  },
+  {
+    provider: 'outlook',
+    name: 'Microsoft Outlook',
+    description: 'Sync events with Outlook Calendar',
+    icon: <Calendar className="h-8 w-8 text-sky-500" />,
+    price: 'FREE',
+    fields: [],
+  },
+];
 
 export default function Integrations() {
+  const queryClient = useQueryClient();
+  const [configDialog, setConfigDialog] = useState<IntegrationConfig | null>(null);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [sendDialog, setSendDialog] = useState<{ provider: string; type: string } | null>(null);
+  const [sendData, setSendData] = useState({ to: '', body: '' });
+
   const { data: integrations = [] } = useQuery({
     queryKey: ['integrations'],
     queryFn: integrationsApi.getIntegrations,
   });
 
-  const availableIntegrations = [
-    {
-      provider: 'twilio',
-      name: 'Twilio SMS',
-      description: 'Send and receive SMS messages',
-      icon: '/assets/integration-twilio.png',
-      connected: integrations.some((i) => i.provider === 'twilio'),
+  const connectMutation = useMutation({
+    mutationFn: async ({ config, data }: { config: IntegrationConfig; data: Record<string, string> }) => {
+      if (config.configEndpoint) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${config.configEndpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Failed to configure');
+        }
+        return response.json();
+      }
+      return integrationsApi.connectIntegration({
+        provider: config.provider as any,
+        metadata: data,
+      });
     },
-    {
-      provider: 'google_calendar',
-      name: 'Google Calendar',
-      description: 'Sync events with Google Calendar',
-      icon: '/assets/integration-google-calendar.png',
-      connected: integrations.some((i) => i.provider === 'google_calendar'),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      toast.success(result.message || 'Integration connected successfully!');
+      setConfigDialog(null);
+      setFormData({});
     },
-    {
-      provider: 'outlook',
-      name: 'Microsoft Outlook',
-      description: 'Sync events with Outlook Calendar',
-      icon: '/assets/integration-outlook.png',
-      connected: integrations.some((i) => i.provider === 'outlook'),
+    onError: (error: Error) => {
+      toast.error(`Failed to connect: ${error.message}`);
     },
-    {
-      provider: 'rm_chat',
-      name: 'RM Chat',
-      description: 'Connect to RM messaging platform',
-      icon: '/assets/integration-twilio_variant_1.png',
-      connected: integrations.some((i) => i.provider === 'rm_chat'),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: integrationsApi.disconnectIntegration,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      toast.success('Integration disconnected');
     },
-  ];
+    onError: (error: Error) => {
+      toast.error(`Failed to disconnect: ${error.message}`);
+    },
+  });
+
+  const handleConnect = (config: IntegrationConfig) => {
+    if (config.fields.length === 0) {
+      if (config.provider === 'google_calendar') {
+        window.location.href = `${import.meta.env.VITE_API_BASE_URL}/integrations/google/auth-url`;
+      } else {
+        toast.info('OAuth integration coming soon!');
+      }
+    } else {
+      setConfigDialog(config);
+      setFormData({});
+    }
+  };
+
+  const handleSubmitConfig = async () => {
+    if (!configDialog) return;
+    connectMutation.mutate({ config: configDialog, data: formData });
+  };
+
+  const handleDisconnect = (integrationId: string) => {
+    if (confirm('Are you sure you want to disconnect this integration?')) {
+      disconnectMutation.mutate(integrationId);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!sendDialog) return;
+
+    const endpoints: Record<string, string> = {
+      telegram: '/integrations/telegram/send',
+      telnyx: '/integrations/telnyx/send',
+      twilio: '/integrations/twilio/send',
+      whatsapp: '/integrations/whatsapp/send',
+    };
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoints[sendDialog.provider]}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sendDialog.provider === 'telegram'
+          ? { chat_id: sendData.to, message: sendData.body }
+          : { to: sendData.to, body: sendData.body, message: sendData.body }
+        ),
+      });
+
+      if (response.ok) {
+        toast.success('Message sent successfully!');
+        setSendDialog(null);
+        setSendData({ to: '', body: '' });
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to send message');
+      }
+    } catch (error) {
+      toast.error('Failed to send message');
+    }
+  };
+
+  const isConnected = (provider: string) => integrations.some((i) => i.provider === provider);
+  const getIntegration = (provider: string) => integrations.find((i) => i.provider === provider);
 
   return (
     <div className="space-y-6">
@@ -49,80 +215,204 @@ export default function Integrations() {
         <div>
           <h1 className="text-3xl font-bold text-gradient">Integrations</h1>
           <p className="text-muted-foreground mt-1">
-            Connect your favorite tools and services
+            Connect messaging platforms - from FREE to premium
           </p>
         </div>
       </div>
 
+      {/* Quick Send Buttons */}
+      {(isConnected('telegram') || isConnected('telnyx') || isConnected('twilio') || isConnected('whatsapp')) && (
+        <Card className="glass-panel p-4">
+          <div className="flex flex-wrap gap-2">
+            {isConnected('telegram') && (
+              <Button onClick={() => setSendDialog({ provider: 'telegram', type: 'Telegram' })} variant="outline" size="sm">
+                <Send className="h-4 w-4 mr-2 text-blue-400" /> Send Telegram
+              </Button>
+            )}
+            {isConnected('telnyx') && (
+              <Button onClick={() => setSendDialog({ provider: 'telnyx', type: 'SMS (Telnyx)' })} variant="outline" size="sm">
+                <MessageSquare className="h-4 w-4 mr-2 text-green-400" /> Send SMS
+              </Button>
+            )}
+            {isConnected('whatsapp') && (
+              <Button onClick={() => setSendDialog({ provider: 'whatsapp', type: 'WhatsApp' })} variant="outline" size="sm">
+                <Phone className="h-4 w-4 mr-2 text-green-500" /> Send WhatsApp
+              </Button>
+            )}
+            {isConnected('twilio') && !isConnected('telnyx') && (
+              <Button onClick={() => setSendDialog({ provider: 'twilio', type: 'SMS (Twilio)' })} variant="outline" size="sm">
+                <MessageSquare className="h-4 w-4 mr-2 text-red-500" /> Send SMS
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Integrations Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {availableIntegrations.map((integration) => (
-          <Card key={integration.provider} className="glass-panel p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                <img
-                  src={integration.icon}
-                  alt={integration.name}
-                  className="w-10 h-10 object-contain"
-                />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-lg">{integration.name}</h3>
-                  {integration.connected ? (
-                    <Badge className="bg-green-500/20 text-green-500">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Connected
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Not Connected
-                    </Badge>
-                  )}
+        {INTEGRATION_CONFIGS.map((config) => {
+          const connected = isConnected(config.provider);
+          const integration = getIntegration(config.provider);
+
+          return (
+            <Card key={config.provider} className="glass-panel p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                  {config.icon}
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">{integration.description}</p>
-                <div className="flex gap-2">
-                  {integration.connected ? (
-                    <>
-                      <Button variant="outline" size="sm">
-                        Configure
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-lg">{config.name}</h3>
+                    <Badge variant="outline" className={config.price === 'FREE' ? 'text-green-400 border-green-400' : 'text-yellow-400 border-yellow-400'}>
+                      <DollarSign className="h-3 w-3 mr-1" />
+                      {config.price}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {connected ? (
+                      <Badge className="bg-green-500/20 text-green-500">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Not Connected
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">{config.description}</p>
+                  <div className="flex gap-2">
+                    {connected ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleConnect(config)}>
+                          Configure
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => integration && handleDisconnect(integration.id)}
+                        >
+                          Disconnect
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" className="gradient-primary" onClick={() => handleConnect(config)}>
+                        <Plug className="h-4 w-4 mr-2" />
+                        Connect
                       </Button>
-                      <Button variant="outline" size="sm" className="text-destructive">
-                        Disconnect
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="sm" className="gradient-primary">
-                      <Plug className="h-4 w-4 mr-2" />
-                      Connect
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Info Card */}
-      <Card className="glass-panel p-6 border-accent/50">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-lg gradient-accent flex items-center justify-center flex-shrink-0">
-            <ExternalLink className="h-6 w-6" />
+      {/* Setup Instructions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="glass-panel p-6 border-blue-500/50">
+          <div className="flex items-start gap-4">
+            <Send className="h-8 w-8 text-blue-400 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-lg mb-2">Setting Up Telegram (FREE)</h3>
+              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                <li>Message <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@BotFather</a> on Telegram</li>
+                <li>Send /newbot and follow the prompts</li>
+                <li>Copy the bot token you receive</li>
+                <li>Paste it above and connect</li>
+                <li>Share your bot link with clients!</li>
+              </ol>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-lg mb-2">Need a Custom Integration?</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              We can help you connect to any service with an API. Contact our team to discuss
-              custom integrations for your specific needs.
-            </p>
-            <Button variant="outline" size="sm">
-              Contact Support
+        </Card>
+
+        <Card className="glass-panel p-6 border-green-500/50">
+          <div className="flex items-start gap-4">
+            <MessageSquare className="h-8 w-8 text-green-400 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-lg mb-2">Setting Up Telnyx (Cheap SMS)</h3>
+              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                <li>Sign up at <a href="https://telnyx.com" target="_blank" rel="noopener" className="text-green-400 hover:underline">telnyx.com</a></li>
+                <li>Get $10 free credit</li>
+                <li>Buy a phone number (~$1/month)</li>
+                <li>Create an API key in Portal</li>
+                <li>SMS costs only $0.004 each!</li>
+              </ol>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Configuration Dialog */}
+      <Dialog open={!!configDialog} onOpenChange={() => setConfigDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configure {configDialog?.name}</DialogTitle>
+            <DialogDescription>{configDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {configDialog?.fields.map((field) => (
+              <div key={field.name} className="space-y-2">
+                <Label htmlFor={field.name}>{field.label}</Label>
+                <Input
+                  id={field.name}
+                  type={field.type || 'text'}
+                  placeholder={field.placeholder}
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfigDialog(null)}>Cancel</Button>
+            <Button onClick={handleSubmitConfig} disabled={connectMutation.isPending} className="gradient-primary">
+              {connectMutation.isPending ? 'Connecting...' : 'Save & Connect'}
             </Button>
           </div>
-        </div>
-      </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Message Dialog */}
+      <Dialog open={!!sendDialog} onOpenChange={() => setSendDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send {sendDialog?.type}</DialogTitle>
+            <DialogDescription>
+              {sendDialog?.provider === 'telegram' ? 'Enter chat ID (from Telegram updates)' : 'Enter phone number'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="to">{sendDialog?.provider === 'telegram' ? 'Chat ID' : 'Phone Number'}</Label>
+              <Input
+                id="to"
+                placeholder={sendDialog?.provider === 'telegram' ? '123456789' : '+1234567890'}
+                value={sendData.to}
+                onChange={(e) => setSendData({ ...sendData, to: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="body">Message</Label>
+              <Input
+                id="body"
+                placeholder="Your message..."
+                value={sendData.body}
+                onChange={(e) => setSendData({ ...sendData, body: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSendDialog(null)}>Cancel</Button>
+            <Button onClick={handleSendMessage} className="gradient-primary">
+              <Send className="h-4 w-4 mr-2" /> Send
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

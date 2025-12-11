@@ -11,6 +11,8 @@ import Calendar from './pages/Calendar';
 import Workflows from './pages/Workflows';
 import Integrations from './pages/Integrations';
 import Settings from './pages/Settings';
+import Conversations from './pages/Conversations';
+import Import from './pages/Import';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
@@ -49,10 +51,12 @@ const App = () => (
           >
             <Route path="/" element={<Dashboard />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/conversations" element={<Conversations />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/integrations" element={<Integrations />} />
+            <Route path="/import" element={<Import />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
 
