@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FANZ Mobile - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      background: linear-gradient(135deg, #00E1FF 0%, #FF2E79 100%);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, #00E1FF, #FF2E79);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #888;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #00E1FF 0%, #FF2E79 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 225, 255, 0.3);
+    }
+    
+    .retry-btn:active {
+      transform: translateY(0);
+    }
+    
+    .status {
+      margin-top: 30px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+    
+    .status-item:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-label {
+      color: #888;
+      font-size: 14px;
+    }
+    
+    .status-value {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .status-value.offline {
+      color: #ff4757;
+    }
+    
+    .status-value.cached {
+      color: #2ed573;
+    }
+    
+    .tips {
+      margin-top: 30px;
+      text-align: left;
+    }
+    
+    .tips h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .tips ul {
+      list-style: none;
+    }
+    
+    .tips li {
+      padding: 8px 0;
+      font-size: 14px;
+      color: #888;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .tips li::before {
+      content: '→';
+      color: #00E1FF;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    
+    <h1>You're Offline</h1>
+    <p>Don't worry, your drafts and scheduled posts are saved locally. Connect to the internet to sync your content.</p>
+    
+    <button class="retry-btn" onclick="window.location.reload()">
+      <span>🔄</span>
+      Try Again
+    </button>
+    
+    <div class="status">
+      <div class="status-item">
+        <span class="status-label">Network Status</span>
+        <span class="status-value offline" id="networkStatus">Offline</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Cached Data</span>
+        <span class="status-value cached">Available</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Pending Uploads</span>
+        <span class="status-value" id="pendingUploads">0</span>
+      </div>
+    </div>
+    
+    <div class="tips">
+      <h3>What you can do offline</h3>
+      <ul>
+        <li>View cached content</li>
+        <li>Create draft posts</li>
+        <li>Schedule posts (will sync when online)</li>
+        <li>Access your profile</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // Update network status when it changes
+    window.addEventListener('online', () => {
+      document.getElementById('networkStatus').textContent = 'Online';
+      document.getElementById('networkStatus').className = 'status-value cached';
+      // Auto-reload after brief delay
+      setTimeout(() => window.location.reload(), 1000);
+    });
+    
+    window.addEventListener('offline', () => {
+      document.getElementById('networkStatus').textContent = 'Offline';
+      document.getElementById('networkStatus').className = 'status-value offline';
+    });
+    
+    // Check initial status
+    if (navigator.onLine) {
+      document.getElementById('networkStatus').textContent = 'Online';
+      document.getElementById('networkStatus').className = 'status-value cached';
+    }
+    
+    // Check for pending uploads in IndexedDB
+    if ('indexedDB' in window) {
+      // Would check IndexedDB for pending items
+    }
+  </script>
+</body>
+</html>
+

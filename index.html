@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <!-- Favicon and App Icons -->
+  <link rel="icon" href="/icons/icon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icons/icon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <title>FANZ Mobile - Creator App</title>
+  <meta name="description" content="FANZ Mobile App - Upload content directly to your creator platforms. Manage BoyFanz, GirlFanz, PupFanz and more." />
+  <meta name="author" content="FANZ Group Holdings" />
+  <meta name="keywords" content="creator, content, fanz, boyfanz, girlfanz, pupfanz, upload, schedule, analytics">
+
+  <!-- Mobile App Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FANZ Mobile">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <meta name="msapplication-TileColor" content="#000000">
+  <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
+  
+  <!-- iOS Splash Screens -->
+  <link rel="apple-touch-startup-image" href="/splash/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px)">
+  <link rel="apple-touch-startup-image" href="/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px)">
+  <link rel="apple-touch-startup-image" href="/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px)">
+  <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px)">
+  <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px)">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="FANZ Mobile - Creator App" />
+  <meta property="og:description" content="Upload content directly to your creator platforms" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mobile.fanz.website" />
+  <meta property="og:image" content="https://mobile.fanz.website/og-image.png" />
+  <meta property="og:site_name" content="FANZ Mobile" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FANZ Mobile - Creator App">
+  <meta name="twitter:description" content="Upload content directly to your creator platforms">
+  <meta name="twitter:image" content="https://mobile.fanz.website/twitter-card.png">
+
+  <style>
+    /* Mobile-specific styles */
+    body {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      background: #000000;
+    }
+    
+    /* Prevent zoom on input focus */
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+    
+    /* Hide scrollbars but keep functionality */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    
+    * {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* Safe area padding for notched devices */
+    #root {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      min-height: 100vh;
+    }
+    
+    /* Loading state */
+    .app-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+      z-index: 9999;
+    }
+    
+    .app-loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #00E1FF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <!-- Loading state shown before React hydrates -->
+    <div class="app-loading" id="app-loader">
+      <div class="spinner"></div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.tsx"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    // Register service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/pwabuilder-sw.js', {
+            scope: '/'
+          });
+          console.log('✅ Service Worker registered:', registration.scope);
+          
+          // Check for updates periodically
+          setInterval(() => {
+            registration.update();
+          }, 60 * 60 * 1000); // Every hour
+          
+        } catch (error) {
+          console.warn('⚠️ Service Worker registration failed:', error);
+        }
+      });
+    }
+    
+    // Remove loading state when app is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const loader = document.getElementById('app-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.3s ease';
+          setTimeout(() => loader.remove(), 300);
+        }
+      }, 100);
+    });
+    
+    // Handle PWA install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // You can show your own install button here
+      window.dispatchEvent(new CustomEvent('pwaInstallReady'));
+    });
+    
+    // Track successful installation
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      console.log('✅ FANZ Mobile installed successfully');
+    });
+  </script>
+</body>
+
+</html>

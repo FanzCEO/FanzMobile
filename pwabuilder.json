@@ -1,0 +1,133 @@
+{
+  "name": "FANZ Mobile",
+  "description": "Creator content management app for the FANZ platform ecosystem",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "manifest_url": "https://mobile.fanz.website/manifest.json",
+  "service_worker_url": "https://mobile.fanz.website/pwabuilder-sw.js",
+  
+  "ios": {
+    "bundle_id": "com.fanz.mobile",
+    "team_id": "YOUR_APPLE_TEAM_ID",
+    "deployment_target": "14.0",
+    "status_bar_style": "black-translucent",
+    "safe_area_insets": {
+      "top": true,
+      "bottom": true
+    },
+    "splash_screens": {
+      "generate": true,
+      "background_color": "#000000"
+    },
+    "permissions": {
+      "camera": "Upload photos and videos directly to your platforms",
+      "photo_library": "Select media from your library to upload",
+      "notifications": "Get notified about engagement and scheduled posts",
+      "background_refresh": "Sync content and process uploads in the background"
+    }
+  },
+  
+  "android": {
+    "package_name": "com.fanz.mobile",
+    "app_version_name": "1.0.0",
+    "app_version_code": 1,
+    "signing_mode": "new",
+    "source": "pwabuilder",
+    "icon_background_color": "#000000",
+    "maskable_icon_background_color": "#000000",
+    "splash_fade_out_duration": 300,
+    "enable_notifications": true,
+    "notification_delegation": true,
+    "location_delegation": false,
+    "shortcuts": true,
+    "share_target": true,
+    "file_handling": true,
+    "chrome_os_only": false,
+    "fallback_type": "customtabs",
+    "enable_site_settings_shortcut": true,
+    "host": "mobile.fanz.website",
+    "start_url": "/",
+    "theme_color": "#000000",
+    "navigation_color": "#000000",
+    "navigation_color_dark": "#000000",
+    "navigation_divider_color": "#1a1a1a",
+    "navigation_divider_color_dark": "#1a1a1a",
+    "background_color": "#000000",
+    "display": "standalone",
+    "orientation": "portrait",
+    "permissions": [
+      "CAMERA",
+      "READ_EXTERNAL_STORAGE",
+      "WRITE_EXTERNAL_STORAGE",
+      "INTERNET",
+      "ACCESS_NETWORK_STATE",
+      "VIBRATE",
+      "RECEIVE_BOOT_COMPLETED",
+      "POST_NOTIFICATIONS"
+    ]
+  },
+  
+  "windows": {
+    "package_id": "FANZMobile",
+    "publisher_id": "CN=FANZ Group Holdings",
+    "publisher_display_name": "FANZ Group Holdings",
+    "version": "1.0.0.0",
+    "classic_package": false,
+    "target_device_families": ["Desktop", "Mobile"]
+  },
+  
+  "store_listings": {
+    "category": "Social",
+    "sub_category": "Content Creation",
+    "age_rating": "18+",
+    "content_rating": "Mature 17+",
+    "privacy_policy_url": "https://fanz.website/privacy",
+    "terms_of_service_url": "https://fanz.website/terms",
+    "support_url": "https://support.fanz.website",
+    "marketing_url": "https://fanz.website",
+    
+    "screenshots": {
+      "phone": [
+        {
+          "url": "/screenshots/phone-1.png",
+          "description": "Dashboard with earnings and stats"
+        },
+        {
+          "url": "/screenshots/phone-2.png",
+          "description": "Content upload with AI enhancement"
+        },
+        {
+          "url": "/screenshots/phone-3.png",
+          "description": "Schedule posts across platforms"
+        },
+        {
+          "url": "/screenshots/phone-4.png",
+          "description": "DMCA protection and compliance"
+        }
+      ],
+      "tablet": [
+        {
+          "url": "/screenshots/tablet-1.png",
+          "description": "Full dashboard view on tablet"
+        }
+      ]
+    },
+    
+    "keywords": [
+      "creator",
+      "content",
+      "social media",
+      "upload",
+      "schedule",
+      "analytics",
+      "earnings",
+      "DMCA",
+      "protection"
+    ],
+    
+    "short_description": "Manage your creator content across BoyFanz, GirlFanz, PupFanz and more.",
+    
+    "full_description": "FANZ Mobile is the official creator companion app for the FANZ platform ecosystem. Upload, schedule, and manage your content across multiple platforms from one powerful mobile app.\n\nKEY FEATURES:\n\n📤 SMART UPLOAD\n• Upload directly from camera or gallery\n• AI-powered content enhancement\n• Automatic formatting for each platform\n• Forensic watermarking for protection\n\n📅 CROSS-PLATFORM SCHEDULING\n• Schedule posts across BoyFanz, GirlFanz, PupFanz and more\n• AI-suggested optimal posting times\n• Batch scheduling support\n• Calendar view of all scheduled content\n\n📊 REAL-TIME ANALYTICS\n• Track earnings across all platforms\n• Monitor follower growth\n• Engagement metrics and insights\n• Revenue breakdown by platform\n\n🛡️ CONTENT PROTECTION\n• Automated DMCA takedown requests\n• Forensic fingerprinting\n• Leak detection monitoring\n• 98%+ takedown success rate\n\n🤖 AUTOMATION\n• Welcome message bots\n• Fan engagement automation\n• CRM for top supporters\n• Custom message templates\n\nSUPPORTED PLATFORMS:\n• BoyFanz\n• GirlFanz  \n• PupFanz\n• And 11 more FANZ network platforms\n\nSOCIAL MEDIA INTEGRATION:\n• Twitter/X crossposting\n• Reddit promotion\n• Instagram Stories\n• TikTok clips\n• Bluesky sharing\n\nDownload FANZ Mobile today and take control of your creator career!"
+  }
+}
+
