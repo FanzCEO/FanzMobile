@@ -32,3 +32,8 @@ shadcn-ui/android/*.jks
 android/keystore.properties
 android/*.keystore
 android/*.jks
+
+# Android generated
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/
