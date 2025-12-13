@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# secrets
+shadcn-ui/android/keystore.properties
+shadcn-ui/android/*.keystore
+shadcn-ui/android/*.jks
+
+# secrets
+android/keystore.properties
+android/*.keystore
+android/*.jks
