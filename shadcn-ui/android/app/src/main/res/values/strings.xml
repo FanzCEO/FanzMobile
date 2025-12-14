@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">RentCRM</string>
-    <string name="title_activity_main">RentCRM</string>
+    <string name="app_name">WickedCRM</string>
+    <string name="title_activity_main">WickedCRM</string>
     <string name="package_name">com.fanz.rentcrm</string>
     <string name="custom_url_scheme">com.fanz.rentcrm</string>
 </resources>

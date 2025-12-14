@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.fanz.rentcrm',
-  appName: 'RentCRM',
+  appName: 'WickedCRM',
   webDir: 'dist',
   server: {
     url: 'https://rent.fanz.website',
