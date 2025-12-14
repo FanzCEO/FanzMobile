@@ -11,11 +11,13 @@ import {
   ChevronRight,
   Upload,
   User,
-  LogOut
+  LogOut,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
   DropdownMenu,
@@ -41,7 +43,24 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { user, clearAuth } = useAuth();
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     clearAuth();
@@ -53,35 +72,58 @@ export function Sidebar() {
   const displayEmail = user?.email || 'user@example.com';
 
   return (
-    <div 
-      className={cn(
-        "fixed left-0 top-0 h-screen glass-panel border-r transition-all duration-300 z-50",
-        collapsed ? "w-20" : "w-72"
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="fixed top-4 left-4 z-50 lg:hidden glass-panel"
+      >
+        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </Button>
+
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
-    >
-      <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          {!collapsed && (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-xl font-bold">AI</span>
+
+      <div
+        className={cn(
+          "fixed left-0 top-0 h-screen glass-panel border-r transition-all duration-300 z-50",
+          // Desktop: show based on collapsed state
+          "hidden lg:block",
+          collapsed ? "lg:w-20" : "lg:w-72",
+          // Mobile: show/hide based on mobileOpen state
+          mobileOpen && "!block w-72"
+        )}
+      >
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center justify-between p-6 border-b border-white/10">
+            {(!collapsed || mobileOpen) && (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                  <span className="text-xl font-bold">AI</span>
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gradient">WickedCRM</h1>
+                  <p className="text-xs text-muted-foreground">AI Assistant</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gradient">CRM Escort</h1>
-                <p className="text-xs text-muted-foreground">AI Assistant</p>
-              </div>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto"
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(!collapsed)}
+              className="ml-auto hidden lg:flex"
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -99,7 +141,7 @@ export function Sidebar() {
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span className="font-medium">{item.name}</span>}
+                {(!collapsed || mobileOpen) && <span className="font-medium">{item.name}</span>}
               </Link>
             );
           })}
@@ -112,13 +154,13 @@ export function Sidebar() {
               <button
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer w-full text-left",
-                  collapsed && "justify-center"
+                  collapsed && !mobileOpen && "justify-center"
                 )}
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
                   <span className="text-sm font-bold">{userInitial}</span>
                 </div>
-                {!collapsed && (
+                {(!collapsed || mobileOpen) && (
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{displayName}</p>
                     <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
@@ -146,6 +188,7 @@ export function Sidebar() {
           </DropdownMenu>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
