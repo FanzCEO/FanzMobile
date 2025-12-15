@@ -15,6 +15,16 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		760BE2C32EF076B40031959B /* debug.xcconfig in Sources */ = {isa = PBXBuildFile; fileRef = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */; };
+		760BE2C42EF076B40031959B /* AppRelease.entitlements in Sources */ = {isa = PBXBuildFile; fileRef = 760BE28C2EF071AB0031959B /* AppRelease.entitlements */; };
+		760BE2C52EF076B40031959B /* capacitor.config.json in Sources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
+		760BE2C62EF076B40031959B /* Main.storyboard in Sources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
+		760BE2C72EF076B40031959B /* Assets.xcassets in Sources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
+		760BE2C82EF076B40031959B /* LaunchScreen.storyboard in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
+		760BE2C92EF076B40031959B /* Info.plist in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3131FED79650016851F /* Info.plist */; };
+		760BE2CA2EF076B40031959B /* config.xml in Sources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		760BE2CB2EF076B40031959B /* public in Sources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		760BE2CC2EF076B40031959B /* App.app in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3041FED79650016851F /* App.app */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -157,6 +167,7 @@
 				760BE28B2EF0717C0031959B /* PBXBuildRule */,
 			);
 			dependencies = (
+				760BE2C22EF076A20031959B /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -252,11 +263,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				760BE2C32EF076B40031959B /* debug.xcconfig in Sources */,
+				760BE2C42EF076B40031959B /* AppRelease.entitlements in Sources */,
+				760BE2C52EF076B40031959B /* capacitor.config.json in Sources */,
+				760BE2C62EF076B40031959B /* Main.storyboard in Sources */,
+				760BE2C72EF076B40031959B /* Assets.xcassets in Sources */,
+				760BE2C82EF076B40031959B /* LaunchScreen.storyboard in Sources */,
+				760BE2C92EF076B40031959B /* Info.plist in Sources */,
+				760BE2CA2EF076B40031959B /* config.xml in Sources */,
+				760BE2CB2EF076B40031959B /* public in Sources */,
+				760BE2CC2EF076B40031959B /* App.app in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		760BE2C22EF076A20031959B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 760BE2C12EF076A20031959B /* CapApp-SPM */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -388,6 +416,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
+				NEW_SETTING = "";
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -448,6 +477,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				NEW_SETTING = "";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -461,8 +491,10 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "App/AppDelegate.swift App/Base.lproj/LaunchScreen.storyboard App/public App/config.xml App/AppRelease.entitlements App/Assets.xcassets ../debug.xcconfig App/Info.plist App/capacitor.config.json App/Base.lproj/Main.storyboard App";
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -484,9 +516,11 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = App/AppRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "App/AppDelegate.swift App/Base.lproj/LaunchScreen.storyboard App/public App/config.xml App/AppRelease.entitlements App/Assets.xcassets ../debug.xcconfig App/Info.plist App/capacitor.config.json App/Base.lproj/Main.storyboard App";
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -534,6 +568,11 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		4D22ABE82AF431CB00220026 /* CapApp-SPM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;
+			productName = "CapApp-SPM";
+		};
+		760BE2C12EF076A20031959B /* CapApp-SPM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;
 			productName = "CapApp-SPM";
