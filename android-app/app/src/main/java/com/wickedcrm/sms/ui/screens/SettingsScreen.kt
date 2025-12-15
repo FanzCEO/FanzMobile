@@ -3,6 +3,8 @@ package com.wickedcrm.sms.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -11,9 +13,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wickedcrm.sms.WickedSmsApp
+import com.wickedcrm.sms.data.FontSize
+import com.wickedcrm.sms.data.PreferencesManager
+import com.wickedcrm.sms.data.ThemeMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,10 +28,18 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val preferencesManager = remember { PreferencesManager.getInstance(context) }
+
+    val themeMode by preferencesManager.themeMode.collectAsState()
+    val accessibilitySettings by preferencesManager.accessibilitySettings.collectAsState()
+
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     var showDeleteSyncedDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showFontSizeDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
     var deleteSuccess by remember { mutableStateOf<String?>(null) }
 
@@ -46,6 +61,94 @@ fun SettingsScreen(
                 .padding(padding),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
+            // Appearance Section
+            item {
+                SettingsSectionHeader("Appearance")
+            }
+
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Settings,
+                    title = "Theme",
+                    subtitle = when (themeMode) {
+                        ThemeMode.LIGHT -> "Light"
+                        ThemeMode.DARK -> "Dark"
+                        ThemeMode.SYSTEM -> "System default"
+                    },
+                    onClick = { showThemeDialog = true }
+                )
+            }
+
+            item {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            // Accessibility Section
+            item {
+                SettingsSectionHeader("Accessibility")
+            }
+
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Edit,
+                    title = "Font Size",
+                    subtitle = when (accessibilitySettings.fontSize) {
+                        FontSize.SMALL -> "Small"
+                        FontSize.MEDIUM -> "Medium"
+                        FontSize.LARGE -> "Large"
+                        FontSize.EXTRA_LARGE -> "Extra Large"
+                    },
+                    onClick = { showFontSizeDialog = true }
+                )
+            }
+
+            item {
+                SettingsSwitchItem(
+                    icon = Icons.Default.PlayArrow,
+                    title = "Reduce Motion",
+                    subtitle = "Minimize animations and transitions",
+                    checked = accessibilitySettings.reducedMotion,
+                    onCheckedChange = { preferencesManager.setReducedMotion(it) }
+                )
+            }
+
+            item {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Star,
+                    title = "High Contrast",
+                    subtitle = "Increase color contrast for better visibility",
+                    checked = accessibilitySettings.highContrast,
+                    onCheckedChange = { preferencesManager.setHighContrast(it) }
+                )
+            }
+
+            item {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Person,
+                    title = "Screen Reader Optimized",
+                    subtitle = "Optimize layout for screen readers",
+                    checked = accessibilitySettings.screenReaderOptimized,
+                    onCheckedChange = { preferencesManager.setScreenReaderOptimized(it) }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Refresh,
+                    title = "Reset Accessibility Settings",
+                    subtitle = "Restore all accessibility options to defaults",
+                    onClick = {
+                        preferencesManager.resetAccessibilityToDefaults()
+                        deleteSuccess = "Accessibility settings reset"
+                    }
+                )
+            }
+
+            item {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            // Data & Privacy Section
             item {
                 SettingsSectionHeader("Data & Privacy")
             }
@@ -81,6 +184,7 @@ fun SettingsScreen(
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
+            // Account Section
             item {
                 SettingsSectionHeader("Account")
             }
@@ -107,6 +211,7 @@ fun SettingsScreen(
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
+            // About Section
             item {
                 SettingsSectionHeader("About")
             }
@@ -137,6 +242,99 @@ fun SettingsScreen(
                     onClick = { }
                 )
             }
+        }
+
+        // Theme Selection Dialog
+        if (showThemeDialog) {
+            AlertDialog(
+                onDismissRequest = { showThemeDialog = false },
+                title = { Text("Choose Theme") },
+                text = {
+                    Column(modifier = Modifier.selectableGroup()) {
+                        ThemeMode.values().forEach { mode ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = themeMode == mode,
+                                        onClick = {
+                                            preferencesManager.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        },
+                                        role = Role.RadioButton
+                                    )
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = themeMode == mode,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = when (mode) {
+                                        ThemeMode.LIGHT -> "Light"
+                                        ThemeMode.DARK -> "Dark"
+                                        ThemeMode.SYSTEM -> "System default"
+                                    }
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showThemeDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Font Size Selection Dialog
+        if (showFontSizeDialog) {
+            AlertDialog(
+                onDismissRequest = { showFontSizeDialog = false },
+                title = { Text("Choose Font Size") },
+                text = {
+                    Column(modifier = Modifier.selectableGroup()) {
+                        FontSize.values().forEach { size ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = accessibilitySettings.fontSize == size,
+                                        onClick = {
+                                            preferencesManager.setFontSize(size)
+                                            showFontSizeDialog = false
+                                        },
+                                        role = Role.RadioButton
+                                    )
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = accessibilitySettings.fontSize == size,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = when (size) {
+                                        FontSize.SMALL -> "Small"
+                                        FontSize.MEDIUM -> "Medium"
+                                        FontSize.LARGE -> "Large"
+                                        FontSize.EXTRA_LARGE -> "Extra Large"
+                                    }
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFontSizeDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         // Delete All Data Dialog
@@ -343,6 +541,56 @@ fun SettingsItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun SettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
         }
     }
 }

@@ -2,6 +2,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { useAuth } from './lib/hooks/useAuth';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +19,8 @@ import AIAssistant from './pages/AIAssistant';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,41 +37,47 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+  <ThemeProvider>
+    <AccessibilityProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
 
-          {/* Protected Routes */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/conversations" element={<Conversations />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/workflows" element={<Workflows />} />
-            <Route path="/integrations" element={<Integrations />} />
-            <Route path="/import" element={<Import />} />
-            <Route path="/ai" element={<AIAssistant />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
+              {/* Protected Routes */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/conversations" element={<Conversations />} />
+                <Route path="/contacts" element={<Contacts />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/workflows" element={<Workflows />} />
+                <Route path="/integrations" element={<Integrations />} />
+                <Route path="/import" element={<Import />} />
+                <Route path="/ai" element={<AIAssistant />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
 
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AccessibilityProvider>
+  </ThemeProvider>
 );
 
 export default App;
