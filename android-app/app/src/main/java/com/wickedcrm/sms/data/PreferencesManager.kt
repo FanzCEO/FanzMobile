@@ -106,8 +106,8 @@ class PreferencesManager(context: Context) {
         updateAccessibilitySettings()
     }
 
-    fun getFontScale(): Float {
-        return when (getAccessibilitySettings().fontSize) {
+    fun getFontScale(fontSize: FontSize = getAccessibilitySettings().fontSize): Float {
+        return when (fontSize) {
             FontSize.SMALL -> 0.85f
             FontSize.MEDIUM -> 1.0f
             FontSize.LARGE -> 1.15f

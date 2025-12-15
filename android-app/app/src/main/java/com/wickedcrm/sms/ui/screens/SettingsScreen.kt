@@ -1,5 +1,7 @@
 package com.wickedcrm.sms.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,6 +44,17 @@ fun SettingsScreen(
     var showFontSizeDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
     var deleteSuccess by remember { mutableStateOf<String?>(null) }
+    val privacyUrl = "https://wickedcrm.com/legal/privacy-policy.html"
+    val termsUrl = "https://wickedcrm.com/legal/terms-of-service.html"
+
+    val openUrl: (String, String) -> Unit = { url, label ->
+        runCatching {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        }.onFailure {
+            deleteSuccess = "Unable to open $label"
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -221,7 +234,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Privacy Policy",
                     subtitle = "View our privacy policy",
-                    onClick = { /* Open privacy policy URL */ }
+                    onClick = { openUrl(privacyUrl, "Privacy Policy") }
                 )
             }
 
@@ -230,7 +243,7 @@ fun SettingsScreen(
                     icon = Icons.Default.List,
                     title = "Terms of Service",
                     subtitle = "View terms and conditions",
-                    onClick = { /* Open terms URL */ }
+                    onClick = { openUrl(termsUrl, "Terms of Service") }
                 )
             }
 

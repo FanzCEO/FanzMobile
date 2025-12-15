@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.wickedcrm.sms.data.api.WickedCrmApi
 import com.wickedcrm.sms.data.repository.MessageRepository
+import com.wickedcrm.sms.data.PreferencesManager
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -27,6 +28,7 @@ class WickedSmsApp : Application() {
         super.onCreate()
         instance = this
 
+        PreferencesManager.getInstance(this).applyTheme()
         setupApi()
         setupNotificationChannels()
         messageRepository = MessageRepository(api, this)
