@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.routers import ai, moderation, adult_ai, llm, messages, workflows, integrations, contacts, events, verification, user_data
+from app.routers import ai, moderation, adult_ai, llm, messages, workflows, integrations, contacts, events, verification, user_data, auth, help_bot
 
 
 @asynccontextmanager
@@ -54,6 +54,8 @@ app.include_router(contacts.router)
 app.include_router(events.router)
 app.include_router(verification.router)
 app.include_router(user_data.router)
+app.include_router(auth.router)
+app.include_router(help_bot.router)
 
 
 @app.get("/")
