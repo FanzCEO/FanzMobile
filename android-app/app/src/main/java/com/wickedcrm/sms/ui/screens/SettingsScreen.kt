@@ -52,7 +52,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.DeleteSweep,
+                    icon = Icons.Default.Delete,
                     title = "Delete All My Data",
                     subtitle = "Remove all messages and synced data from this device and servers",
                     onClick = { showDeleteAllDialog = true }
@@ -61,7 +61,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.CloudOff,
+                    icon = Icons.Default.Cloud,
                     title = "Delete Synced Data Only",
                     subtitle = "Remove data from WickedCRM servers but keep local messages",
                     onClick = { showDeleteSyncedDialog = true }
@@ -70,7 +70,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.Cached,
+                    icon = Icons.Default.Refresh,
                     title = "Clear Local Cache",
                     subtitle = "Clear cached data without deleting messages",
                     onClick = { showClearCacheDialog = true }
@@ -78,7 +78,7 @@ fun SettingsScreen(
             }
 
             item {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             item {
@@ -87,7 +87,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.Download,
+                    icon = Icons.Default.Share,
                     title = "Export My Data",
                     subtitle = "Download a copy of all your data",
                     onClick = {
@@ -104,7 +104,7 @@ fun SettingsScreen(
             }
 
             item {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             item {
@@ -122,7 +122,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.Description,
+                    icon = Icons.Default.List,
                     title = "Terms of Service",
                     subtitle = "View terms and conditions",
                     onClick = { /* Open terms URL */ }
@@ -188,7 +188,7 @@ fun SettingsScreen(
         if (showDeleteSyncedDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteSyncedDialog = false },
-                icon = { Icon(Icons.Default.CloudOff, contentDescription = null) },
+                icon = { Icon(Icons.Default.Cloud, contentDescription = null) },
                 title = { Text("Delete Synced Data?") },
                 text = {
                     Text(
