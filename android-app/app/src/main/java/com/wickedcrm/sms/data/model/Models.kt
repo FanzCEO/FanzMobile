@@ -149,3 +149,9 @@ data class HealthResponse(
     val status: String,
     @SerializedName("ai_configured") val aiConfigured: Boolean
 )
+
+data class DataExportResponse(
+    val status: String,
+    @SerializedName("download_url") val downloadUrl: String?,
+    @SerializedName("expires_at") val expiresAt: String?
+)

@@ -74,6 +74,17 @@ interface WickedCrmApi {
     @POST("/api/messages/{messageId}/process")
     suspend fun processMessage(@Path("messageId") messageId: String): Response<AiProcessResult>
 
+    // ============== DATA MANAGEMENT ==============
+
+    @DELETE("/api/user/data")
+    suspend fun deleteUserData(): Response<StatusResponse>
+
+    @DELETE("/api/messages/conversation/{phoneNumber}")
+    suspend fun deleteConversation(@Path("phoneNumber") phoneNumber: String): Response<StatusResponse>
+
+    @GET("/api/user/data/export")
+    suspend fun requestDataExport(): Response<DataExportResponse>
+
     // ============== HEALTH ==============
 
     @GET("/health")

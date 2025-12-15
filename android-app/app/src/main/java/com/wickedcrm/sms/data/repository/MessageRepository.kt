@@ -290,6 +290,163 @@ class MessageRepository(
             }
         }
 
+    // ============== DATA MANAGEMENT ==============
+
+    /**
+     * Delete all user data - local and synced
+     */
+    suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
+        // Delete from server first
+        deleteSyncedData()
+
+        // Delete local SMS messages (requires default SMS app)
+        try {
+            contentResolver.delete(
+                Telephony.Sms.CONTENT_URI,
+                null,
+                null
+            )
+            Log.i(TAG, "Deleted all local SMS messages")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting local messages", e)
+            throw e
+        }
+
+        // Clear cache
+        clearCache()
+    }
+
+    /**
+     * Delete only synced data from servers
+     */
+    suspend fun deleteSyncedData() = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteUserData()
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Server deletion failed: ${response.code()}")
+                throw Exception("Server deletion failed: ${response.code()}")
+            }
+            Log.i(TAG, "Deleted synced data from servers")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting synced data", e)
+            throw e
+        }
+    }
+
+    /**
+     * Delete messages for a specific conversation
+     */
+    suspend fun deleteConversation(phoneNumber: String) = withContext(Dispatchers.IO) {
+        try {
+            // Delete from local
+            contentResolver.delete(
+                Telephony.Sms.CONTENT_URI,
+                "${Telephony.Sms.ADDRESS} = ?",
+                arrayOf(phoneNumber)
+            )
+
+            // Delete from server
+            try {
+                api.deleteConversation(phoneNumber)
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not delete from server: ${e.message}")
+            }
+
+            Log.i(TAG, "Deleted conversation with $phoneNumber")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting conversation", e)
+            throw e
+        }
+    }
+
+    /**
+     * Delete a specific message
+     */
+    suspend fun deleteMessage(messageId: Long) = withContext(Dispatchers.IO) {
+        try {
+            contentResolver.delete(
+                Telephony.Sms.CONTENT_URI,
+                "${Telephony.Sms._ID} = ?",
+                arrayOf(messageId.toString())
+            )
+            Log.i(TAG, "Deleted message $messageId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting message", e)
+            throw e
+        }
+    }
+
+    /**
+     * Clear local cache
+     */
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        try {
+            context.cacheDir.deleteRecursively()
+            Log.i(TAG, "Cache cleared")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing cache", e)
+        }
+    }
+
+    /**
+     * Export user data to Downloads folder
+     */
+    suspend fun exportUserData() = withContext(Dispatchers.IO) {
+        try {
+            val messages = mutableListOf<Map<String, Any>>()
+
+            val cursor = contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(
+                    Telephony.Sms._ID,
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE,
+                    Telephony.Sms.TYPE
+                ),
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC"
+            )
+
+            cursor?.use {
+                val idIndex = it.getColumnIndex(Telephony.Sms._ID)
+                val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
+                val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
+                val typeIndex = it.getColumnIndex(Telephony.Sms.TYPE)
+
+                while (it.moveToNext()) {
+                    messages.add(mapOf(
+                        "id" to it.getLong(idIndex),
+                        "phone_number" to (it.getString(addressIndex) ?: ""),
+                        "body" to (it.getString(bodyIndex) ?: ""),
+                        "timestamp" to it.getLong(dateIndex),
+                        "type" to if (it.getInt(typeIndex) == Telephony.Sms.MESSAGE_TYPE_SENT) "sent" else "received"
+                    ))
+                }
+            }
+
+            // Write to Downloads
+            val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOWNLOADS
+            )
+            val exportFile = java.io.File(downloadsDir, "wickedcrm_messages_export_${System.currentTimeMillis()}.json")
+
+            val json = com.google.gson.Gson().toJson(mapOf(
+                "exported_at" to dateFormat.format(Date()),
+                "message_count" to messages.size,
+                "messages" to messages
+            ))
+
+            exportFile.writeText(json)
+            Log.i(TAG, "Exported ${messages.size} messages to ${exportFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error exporting data", e)
+            throw e
+        }
+    }
+
     companion object {
         private const val TAG = "MessageRepository"
     }
