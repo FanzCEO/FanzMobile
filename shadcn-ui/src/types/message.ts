@@ -1,5 +1,5 @@
 export type MessageDirection = 'inbound' | 'outbound';
-export type MessageChannel = 'sms' | 'rm_chat' | 'email' | 'manual' | 'whatsapp' | 'telegram' | 'telnyx';
+export type MessageChannel = 'sms' | 'imessage' | 'rm_chat' | 'email' | 'manual' | 'whatsapp' | 'telegram' | 'telnyx';
 
 export interface AIResult {
   contact_name?: string;

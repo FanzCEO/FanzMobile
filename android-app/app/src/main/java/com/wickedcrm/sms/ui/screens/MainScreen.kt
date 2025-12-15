@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wickedcrm.sms.WickedSmsApp
 import com.wickedcrm.sms.data.repository.Conversation
+import com.wickedcrm.sms.data.repository.LocalSmsMessage
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -354,7 +355,7 @@ fun ConversationScreen(
 }
 
 @Composable
-fun MessageBubble(message: com.wickedcrm.sms.data.repository.LocalSmsMessage) {
+fun MessageBubble(message: LocalSmsMessage) {
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.US) }
 
     Column(
@@ -409,7 +410,7 @@ fun EmptyState() {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            Icons.Default.Message,
+            Icons.Default.Email,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant

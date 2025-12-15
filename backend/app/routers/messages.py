@@ -25,7 +25,7 @@ def get_message_processor():
 # ============== DATA MODELS ==============
 
 MessageDirection = Literal["inbound", "outbound"]
-MessageChannel = Literal["sms", "rm_chat", "email", "manual", "whatsapp", "telegram", "telnyx"]
+MessageChannel = Literal["sms", "imessage", "rm_chat", "email", "manual", "whatsapp", "telegram", "telnyx"]
 
 
 class AIResult(BaseModel):

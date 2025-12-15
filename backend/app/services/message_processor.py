@@ -176,7 +176,7 @@ Respond ONLY with valid JSON in this exact format:
             max_tokens=500
         )
 
-        response = await self.llm.chat(request)
+        response = await self.llm.generate(request)
 
         # Parse JSON response
         try:
