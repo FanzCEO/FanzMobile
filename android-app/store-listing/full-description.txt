@@ -1,0 +1,44 @@
+WickedCRM SMS - The intelligent messaging app that protects you from spam and keeps your contacts organized.
+
+KEY FEATURES:
+
+📱 FULL SMS REPLACEMENT
+• Set as your default messaging app
+• Send and receive SMS/MMS seamlessly
+• Modern Material You design
+
+🛡️ SPAM PROTECTION
+• Automatic spam detection and blocking
+• Caller ID and number verification
+• Report spam numbers to protect others
+• Customizable block lists
+
+🤖 AI-POWERED INSIGHTS
+• Automatically extracts meeting times and dates
+• Identifies contact information in messages
+• Detects action items and tasks
+• Smart message categorization
+
+☁️ CLOUD SYNC
+• Sync messages to WickedCRM dashboard
+• Access conversations from any device
+• Automatic backup of all messages
+
+🔒 PRIVACY FOCUSED
+• Your messages stay on your device
+• Optional cloud sync (you control your data)
+• No ads, no tracking
+
+PERFECT FOR:
+• Professionals managing client communications
+• Anyone tired of spam calls and texts
+• Users who want AI assistance with scheduling
+• People who need organized message management
+
+PERMISSIONS EXPLAINED:
+• SMS permissions: Required to function as your messaging app
+• Contacts: To show contact names in conversations
+• Phone: For caller ID features
+• Internet: For spam checking and optional cloud sync
+
+Download now and take control of your messaging experience!
