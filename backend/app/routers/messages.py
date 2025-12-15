@@ -189,6 +189,34 @@ async def delete_message(message_id: str):
     raise HTTPException(status_code=404, detail="Message not found")
 
 
+@router.delete("/conversation/{phone_number}")
+async def delete_conversation(phone_number: str):
+    """
+    Delete all messages for a specific phone number/conversation.
+    Used for GDPR/CCPA data deletion requests.
+    """
+    global messages_db
+    initial_count = len(messages_db)
+
+    # Filter out messages matching this phone number
+    messages_db = [
+        msg for msg in messages_db
+        if not (
+            msg.ai_result and
+            msg.ai_result.phone_number and
+            phone_number in msg.ai_result.phone_number
+        )
+    ]
+
+    deleted_count = initial_count - len(messages_db)
+
+    return {
+        "status": "deleted",
+        "phone_number": phone_number,
+        "messages_deleted": deleted_count
+    }
+
+
 # ============== CHANNEL STATS ==============
 
 @router.get("/stats/channels")
