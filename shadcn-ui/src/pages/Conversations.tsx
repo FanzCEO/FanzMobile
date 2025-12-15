@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatRelativeTime } from '@/lib/utils/date';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api/client';
 import type { Contact } from '@/types/contact';
 import type { Message } from '@/types/message';
 
@@ -70,17 +71,11 @@ export default function Conversations() {
 
       // Then try to send via Twilio if configured
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/integrations/twilio/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: selectedContact?.phone_number,
-            body,
-          }),
+        await apiClient.post('/api/integrations/twilio/send', {
+          to: selectedContact?.phone_number,
+          body,
+          message: body,
         });
-        if (!response.ok) {
-          console.warn('Twilio send failed, message saved locally');
-        }
       } catch (e) {
         console.warn('Twilio not configured, message saved locally');
       }

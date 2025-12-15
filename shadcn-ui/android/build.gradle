@@ -17,10 +17,17 @@ buildscript {
 
 apply from: "variables.gradle"
 
-allprojects {
+subprojects {
     repositories {
         google()
         mavenCentral()
+    }
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                compileSdkVersion rootProject.ext.compileSdkVersion
+            }
+        }
     }
 }
 
