@@ -32,6 +32,7 @@ fun MainScreen() {
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedConversation by remember { mutableStateOf<String?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -54,7 +55,7 @@ fun MainScreen() {
                     )
                 },
                 actions = {
-                    IconButton(onClick = { /* Open settings */ }) {
+                    IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
@@ -77,19 +78,25 @@ fun MainScreen() {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (conversations.isEmpty()) {
-                EmptyState()
-            } else {
-                if (selectedConversation != null) {
+            when {
+                showSettings -> {
+                    SettingsScreen(onBack = { showSettings = false })
+                }
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                conversations.isEmpty() -> {
+                    EmptyState()
+                }
+                selectedConversation != null -> {
                     ConversationScreen(
                         phoneNumber = selectedConversation!!,
                         onBack = { selectedConversation = null }
                     )
-                } else {
+                }
+                else -> {
                     ConversationList(
                         conversations = conversations,
                         onConversationClick = { selectedConversation = it }
