@@ -96,6 +96,10 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
   },
 ];
 
+const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const withApiPath = (path: string) => (path.startsWith('/api') ? path : `/api${path}`);
+const buildApiUrl = (path: string) => `${apiBase}${withApiPath(path)}`;
+
 export default function Integrations() {
   const queryClient = useQueryClient();
   const [configDialog, setConfigDialog] = useState<IntegrationConfig | null>(null);
@@ -111,16 +115,8 @@ export default function Integrations() {
   const connectMutation = useMutation({
     mutationFn: async ({ config, data }: { config: IntegrationConfig; data: Record<string, string> }) => {
       if (config.configEndpoint) {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${config.configEndpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || 'Failed to configure');
-        }
-        return response.json();
+        const response = await apiClient.post(withApiPath(config.configEndpoint), data);
+        return response.data;
       }
       return integrationsApi.connectIntegration({
         provider: config.provider as any,
@@ -152,7 +148,7 @@ export default function Integrations() {
   const handleConnect = (config: IntegrationConfig) => {
     if (config.fields.length === 0) {
       if (config.provider === 'google_calendar') {
-        window.location.href = `${import.meta.env.VITE_API_BASE_URL}/integrations/google/auth-url`;
+        window.location.href = buildApiUrl('/integrations/google/auth-url');
       } else {
         toast.info('OAuth integration coming soon!');
       }
@@ -184,25 +180,19 @@ export default function Integrations() {
     };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoints[sendDialog.provider]}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sendDialog.provider === 'telegram'
+      await apiClient.post(
+        withApiPath(endpoints[sendDialog.provider]),
+        sendDialog.provider === 'telegram'
           ? { chat_id: sendData.to, message: sendData.body }
           : { to: sendData.to, body: sendData.body, message: sendData.body }
-        ),
-      });
+      );
 
-      if (response.ok) {
-        toast.success('Message sent successfully!');
-        setSendDialog(null);
-        setSendData({ to: '', body: '' });
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to send message');
-      }
-    } catch (error) {
-      toast.error('Failed to send message');
+      toast.success('Message sent successfully!');
+      setSendDialog(null);
+      setSendData({ to: '', body: '' });
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error?.message || 'Failed to send message';
+      toast.error(detail);
     }
   };
 
