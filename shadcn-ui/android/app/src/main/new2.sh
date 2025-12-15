@@ -1,3 +1,0 @@
-    ./gradlew clean
-    ./gradlew bundleRelease
-    
