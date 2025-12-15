@@ -211,11 +211,11 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gradient">Integrations</h1>
-          <p className="text-muted-foreground mt-1">
-            Connect messaging platforms - from FREE to premium
+          <h1 className="text-2xl sm:text-3xl font-bold text-gradient">Integrations</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Connect messaging platforms
           </p>
         </div>
       </div>
@@ -249,21 +249,21 @@ export default function Integrations() {
       )}
 
       {/* Integrations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {INTEGRATION_CONFIGS.map((config) => {
           const connected = isConnected(config.provider);
           const integration = getIntegration(config.provider);
 
           return (
-            <Card key={config.provider} className="glass-panel p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Card key={config.provider} className="glass-panel p-4 sm:p-6">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
                   {config.icon}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-lg">{config.name}</h3>
-                    <Badge variant="outline" className={config.price === 'FREE' ? 'text-green-400 border-green-400' : 'text-yellow-400 border-yellow-400'}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-bold text-base sm:text-lg">{config.name}</h3>
+                    <Badge variant="outline" className={`text-xs ${config.price === 'FREE' ? 'text-green-400 border-green-400' : 'text-yellow-400 border-yellow-400'}`}>
                       <DollarSign className="h-3 w-3 mr-1" />
                       {config.price}
                     </Badge>
@@ -281,24 +281,24 @@ export default function Integrations() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">{config.description}</p>
-                  <div className="flex gap-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 line-clamp-2">{config.description}</p>
+                  <div className="flex flex-wrap gap-2">
                     {connected ? (
                       <>
-                        <Button variant="outline" size="sm" onClick={() => handleConnect(config)}>
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => handleConnect(config)}>
                           Configure
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-destructive"
+                          className="text-destructive text-xs"
                           onClick={() => integration && handleDisconnect(integration.id)}
                         >
                           Disconnect
                         </Button>
                       </>
                     ) : (
-                      <Button size="sm" className="gradient-primary" onClick={() => handleConnect(config)}>
+                      <Button size="sm" className="gradient-primary text-xs" onClick={() => handleConnect(config)}>
                         <Plug className="h-4 w-4 mr-2" />
                         Connect
                       </Button>
@@ -312,34 +312,32 @@ export default function Integrations() {
       </div>
 
       {/* Setup Instructions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="glass-panel p-6 border-blue-500/50">
-          <div className="flex items-start gap-4">
-            <Send className="h-8 w-8 text-blue-400 flex-shrink-0" />
-            <div>
-              <h3 className="font-bold text-lg mb-2">Setting Up Telegram (FREE)</h3>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                <li>Message <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@BotFather</a> on Telegram</li>
-                <li>Send /newbot and follow the prompts</li>
-                <li>Copy the bot token you receive</li>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <Card className="glass-panel p-4 sm:p-6 border-blue-500/50">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <Send className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 flex-shrink-0" />
+            <div className="min-w-0">
+              <h3 className="font-bold text-base sm:text-lg mb-2">Setting Up Telegram (FREE)</h3>
+              <ol className="text-xs sm:text-sm text-muted-foreground space-y-1 sm:space-y-2 list-decimal list-inside">
+                <li>Message <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@BotFather</a></li>
+                <li>Send /newbot and follow prompts</li>
+                <li>Copy the bot token</li>
                 <li>Paste it above and connect</li>
-                <li>Share your bot link with clients!</li>
               </ol>
             </div>
           </div>
         </Card>
 
-        <Card className="glass-panel p-6 border-green-500/50">
-          <div className="flex items-start gap-4">
-            <MessageSquare className="h-8 w-8 text-green-400 flex-shrink-0" />
-            <div>
-              <h3 className="font-bold text-lg mb-2">Setting Up Telnyx (Cheap SMS)</h3>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+        <Card className="glass-panel p-4 sm:p-6 border-green-500/50">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 flex-shrink-0" />
+            <div className="min-w-0">
+              <h3 className="font-bold text-base sm:text-lg mb-2">Setting Up Telnyx (Cheap)</h3>
+              <ol className="text-xs sm:text-sm text-muted-foreground space-y-1 sm:space-y-2 list-decimal list-inside">
                 <li>Sign up at <a href="https://telnyx.com" target="_blank" rel="noopener" className="text-green-400 hover:underline">telnyx.com</a></li>
                 <li>Get $10 free credit</li>
-                <li>Buy a phone number (~$1/month)</li>
-                <li>Create an API key in Portal</li>
-                <li>SMS costs only $0.004 each!</li>
+                <li>Buy a phone number (~$1/mo)</li>
+                <li>Create API key in Portal</li>
               </ol>
             </div>
           </div>

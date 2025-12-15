@@ -46,30 +46,30 @@ export default function Messages() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gradient">Messages</h1>
-          <p className="text-muted-foreground mt-1">
-            Multi-channel conversation management with AI insights
+          <h1 className="text-2xl sm:text-3xl font-bold text-gradient">Messages</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Multi-channel conversation management
           </p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="w-fit">
           <Filter className="h-4 w-4 mr-2" />
           Filter
         </Button>
       </div>
 
       {/* Message Composer */}
-      <Card className="glass-panel p-6">
+      <Card className="glass-panel p-4 sm:p-6">
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {channels.map((channel) => (
               <Button
                 key={channel}
                 variant={selectedChannel === channel ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedChannel(channel)}
-                className={selectedChannel === channel ? 'gradient-primary' : ''}
+                className={`text-xs sm:text-sm ${selectedChannel === channel ? 'gradient-primary' : ''}`}
               >
                 {channel.toUpperCase()}
               </Button>
@@ -96,8 +96,8 @@ export default function Messages() {
       </Card>
 
       {/* Messages List */}
-      <Card className="glass-panel p-6">
-        <h2 className="text-xl font-bold mb-4">All Messages</h2>
+      <Card className="glass-panel p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-bold mb-4">All Messages</h2>
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Loading messages...</div>
         ) : messages.length === 0 ? (

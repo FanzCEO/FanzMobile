@@ -13,7 +13,8 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const navigation = [
   { name: 'Workflows', href: '/workflows', icon: Workflow },
   { name: 'Integrations', href: '/integrations', icon: Plug },
   { name: 'Import', href: '/import', icon: Upload },
+  { name: 'AI Assistant', href: '/ai', icon: Bot },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

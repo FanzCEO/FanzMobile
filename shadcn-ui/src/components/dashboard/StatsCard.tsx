@@ -22,14 +22,14 @@ export function StatsCard({ title, value, icon: Icon, trend, color = 'blue' }: S
   };
 
   return (
-    <Card className="glass-panel p-6 hover:scale-105 transition-transform duration-200">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm text-muted-foreground mb-1">{title}</p>
-          <p className="text-3xl font-bold mb-2">{value}</p>
+    <Card className="glass-panel p-3 sm:p-6 hover:scale-105 transition-transform duration-200">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{title}</p>
+          <p className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">{value}</p>
           {trend && (
             <p className={cn(
-              'text-sm font-medium',
+              'text-xs sm:text-sm font-medium',
               trend.isPositive ? 'text-green-500' : 'text-red-500'
             )}>
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
@@ -37,10 +37,10 @@ export function StatsCard({ title, value, icon: Icon, trend, color = 'blue' }: S
           )}
         </div>
         <div className={cn(
-          'w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center',
+          'w-8 h-8 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0',
           colorClasses[color]
         )}>
-          <Icon className="h-6 w-6" />
+          <Icon className="h-4 w-4 sm:h-6 sm:w-6" />
         </div>
       </div>
     </Card>

@@ -13,6 +13,7 @@ import Integrations from './pages/Integrations';
 import Settings from './pages/Settings';
 import Conversations from './pages/Conversations';
 import Import from './pages/Import';
+import AIAssistant from './pages/AIAssistant';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/import" element={<Import />} />
+            <Route path="/ai" element={<AIAssistant />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
 

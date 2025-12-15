@@ -29,24 +29,24 @@ export default function Dashboard() {
   ).slice(0, 5);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 w-full overflow-x-hidden">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-2">
-          Welcome to <span className="text-gradient">CRM Escort AI</span>
+      <div className="text-center px-2">
+        <h1 className="text-2xl sm:text-4xl font-bold mb-2">
+          Welcome to <span className="text-gradient">WickedCRM</span>
         </h1>
-        <p className="text-muted-foreground text-lg">
-          Your intelligent assistant for managing conversations and relationships
+        <p className="text-muted-foreground text-sm sm:text-lg">
+          Your intelligent AI assistant
         </p>
       </div>
 
       {/* AI Orb */}
-      <div className="flex justify-center py-8">
+      <div className="flex justify-center py-4 sm:py-8">
         <AIOrb state="idle" size="lg" />
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatsCard
           title="Total Messages"
           value={messages.length}
@@ -77,10 +77,10 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent Messages */}
-        <Card className="glass-panel p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <Card className="glass-panel p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             Recent Messages
           </h2>
@@ -121,8 +121,8 @@ export default function Dashboard() {
         </Card>
 
         {/* Upcoming Events */}
-        <Card className="glass-panel p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <Card className="glass-panel p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
             <CalendarIcon className="h-5 w-5 text-accent" />
             Upcoming Events
           </h2>
