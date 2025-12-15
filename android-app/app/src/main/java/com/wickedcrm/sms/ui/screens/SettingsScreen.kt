@@ -61,7 +61,7 @@ fun SettingsScreen(
 
             item {
                 SettingsItem(
-                    icon = Icons.Default.Cloud,
+                    icon = Icons.Default.Lock,
                     title = "Delete Synced Data Only",
                     subtitle = "Remove data from WickedCRM servers but keep local messages",
                     onClick = { showDeleteSyncedDialog = true }
@@ -78,7 +78,7 @@ fun SettingsScreen(
             }
 
             item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             item {
@@ -104,7 +104,7 @@ fun SettingsScreen(
             }
 
             item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             item {
@@ -188,7 +188,7 @@ fun SettingsScreen(
         if (showDeleteSyncedDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteSyncedDialog = false },
-                icon = { Icon(Icons.Default.Cloud, contentDescription = null) },
+                icon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 title = { Text("Delete Synced Data?") },
                 text = {
                     Text(

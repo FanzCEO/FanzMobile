@@ -1,7 +1,5 @@
 plugins {
     id 'com.android.application'
-    id 'com.google.gms.google-services'
-    id 'com.google.firebase.crashlytics'
 }
 
 def keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -74,14 +72,3 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-
-// Only apply Google Services if google-services.json exists
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.exists()) {
-        apply plugin: 'com.google.gms.google-services'
-        apply plugin: 'com.google.firebase.crashlytics'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, Firebase plugins not applied. Push Notifications won't work")
-}
