@@ -4,9 +4,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#7C3AED"
-        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+    <!-- The purple circle has been removed from here -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M70,38H38c-2.2,0 -4,1.8 -4,4v32l8,-8h28c2.2,0 4,-1.8 4,-4V42C74,39.8 72.2,38 70,38zM70,62H43.4L38,67.4V42h32V62z"/>
