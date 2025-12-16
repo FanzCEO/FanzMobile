@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail } from 'lucide-react';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { apiClient } from '@/lib/api/client';
 import type { IntegrationProvider } from '@/types/integration';

@@ -4,13 +4,20 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
-// Hide splash screen when app is ready
-SplashScreen.hide().catch(() => {
-  // Ignore errors on web - SplashScreen only works on native
-});
+const rootEl = document.getElementById('root');
 
-createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+if (rootEl) {
+  const root = createRoot(rootEl);
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+
+  // Hide splash after first paint in native shells
+  requestAnimationFrame(() => {
+    SplashScreen.hide().catch(() => {
+      /* ignore on web */
+    });
+  });
+}
