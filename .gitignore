@@ -49,3 +49,27 @@ test-results/
 pnpm-lock.yaml
 *.pyc
 __pycache__
+
+# Security - NEVER commit these
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
+secrets.json
+credentials.json
+*-credentials.txt
+
+# iOS
+*.xcuserstate
+*.xcuserdatad/
+Pods/
+DerivedData/
+
+# Android
+*.apk
+*.aab
+local.properties
+*.hprof
