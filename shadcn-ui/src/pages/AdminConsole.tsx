@@ -68,7 +68,7 @@ export default function AdminConsole() {
         <div>
           <h1 className="text-3xl font-bold text-gradient">Admin Console</h1>
           <p className="text-muted-foreground">
-            Control access, billing flags, and feature toggles. Actions are UI-only until wired to backend admin APIs.
+            Control access, billing flags, and feature toggles. Requires VITE_ADMIN_API_KEY (X-Admin-Key) to reach admin APIs.
           </p>
         </div>
       </div>
