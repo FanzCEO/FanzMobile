@@ -30,7 +30,7 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'automatic',
-    scheme: 'RentCRM'
+    scheme: 'WickedCRM'
   },
   android: {
     buildOptions: {
