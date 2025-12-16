@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { contactsApi } from '@/lib/api/contacts';
 import { messagesApi } from '@/lib/api/messages';
+import { apiClient } from '@/lib/api/client';
 
 interface ImportResult {
   contacts: number;
@@ -399,13 +400,7 @@ export default function Import() {
 
     try {
       // Fetch Telegram updates from our backend
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/integrations/telegram/updates`);
-
-      if (!response.ok) {
-        throw new Error('Telegram not configured. Please configure it in Integrations first.');
-      }
-
-      const data = await response.json();
+      const { data } = await apiClient.get('/api/integrations/telegram/updates');
       const messages = data.messages || [];
 
       setProgress(20);

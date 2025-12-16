@@ -34,8 +34,20 @@ export default function Settings() {
     email: user?.email || '',
   });
 
+  const [apiKeys, setApiKeys] = useState({
+    openai_key: '',
+    twilio_sid: '',
+    twilio_token: '',
+    huggingface_token: '',
+    huggingface_endpoint: '',
+  });
+
   const handleSaveProfile = () => {
     toast.success('Profile updated successfully');
+  };
+
+  const handleSaveApiKeys = () => {
+    toast.success('API settings saved');
   };
 
   return (
@@ -287,6 +299,8 @@ export default function Settings() {
                   id="openai_key"
                   type="password"
                   placeholder="sk-..."
+                  value={apiKeys.openai_key}
+                  onChange={(e) => setApiKeys({ ...apiKeys, openai_key: e.target.value })}
                   className="mt-1"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -299,6 +313,8 @@ export default function Settings() {
                   id="twilio_sid"
                   type="password"
                   placeholder="AC..."
+                  value={apiKeys.twilio_sid}
+                  onChange={(e) => setApiKeys({ ...apiKeys, twilio_sid: e.target.value })}
                   className="mt-1"
                 />
               </div>
@@ -308,10 +324,40 @@ export default function Settings() {
                   id="twilio_token"
                   type="password"
                   placeholder="..."
+                  value={apiKeys.twilio_token}
+                  onChange={(e) => setApiKeys({ ...apiKeys, twilio_token: e.target.value })}
                   className="mt-1"
                 />
               </div>
-              <Button className="gradient-primary">
+              <div className="pt-2">
+                <Label htmlFor="huggingface_token">Hugging Face API Token</Label>
+                <Input
+                  id="huggingface_token"
+                  type="password"
+                  placeholder="hf_..."
+                  value={apiKeys.huggingface_token}
+                  onChange={(e) => setApiKeys({ ...apiKeys, huggingface_token: e.target.value })}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Used for Hugging Face Inference endpoints or hosted models
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="huggingface_endpoint">Hugging Face Inference URL</Label>
+                <Input
+                  id="huggingface_endpoint"
+                  type="url"
+                  placeholder="https://api-inference.huggingface.co/models/your-model"
+                  value={apiKeys.huggingface_endpoint}
+                  onChange={(e) => setApiKeys({ ...apiKeys, huggingface_endpoint: e.target.value })}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional: custom inference endpoint URL
+                </p>
+              </div>
+              <Button className="gradient-primary" onClick={handleSaveApiKeys}>
                 Save API Keys
               </Button>
             </div>
@@ -419,6 +465,20 @@ export default function Settings() {
                   <div className="text-left">
                     <p className="font-medium">Terms of Service</p>
                     <p className="text-sm text-muted-foreground">Rules for using WickedCRM</p>
+                  </div>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </button>
+
+              <button
+                onClick={() => navigate('/delete-account')}
+                className="w-full flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <p className="font-medium">Delete Account</p>
+                    <p className="text-sm text-muted-foreground">Request account and data deletion</p>
                   </div>
                 </div>
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />

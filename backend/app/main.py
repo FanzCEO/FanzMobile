@@ -7,7 +7,27 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.routers import ai, moderation, adult_ai, llm, messages, workflows, integrations, contacts, events, verification, user_data, auth, help_bot
+from app.routers import (
+    ai,
+    moderation,
+    adult_ai,
+    llm,
+    messages,
+    workflows,
+    integrations,
+    contacts,
+    events,
+    verification,
+    user_data,
+    auth,
+    help_bot,
+    admin,
+    livekit,
+    websocket,
+    threads,
+)
+from app.database import Base, engine
+from app.models import payments  # noqa: F401 - ensure models are registered
 
 
 @asynccontextmanager
@@ -16,6 +36,8 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"Starting {settings.app_name}...")
     print(f"OpenAI configured: {bool(settings.openai_api_key)}")
+    # Ensure billing/admin tables exist
+    Base.metadata.create_all(bind=engine)
     yield
     # Shutdown
     print("Shutting down...")
@@ -36,6 +58,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:8080",
+        "https://rent.fanz.website",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -56,6 +79,10 @@ app.include_router(verification.router)
 app.include_router(user_data.router)
 app.include_router(auth.router)
 app.include_router(help_bot.router)
+app.include_router(admin.router)
+app.include_router(livekit.router)
+app.include_router(websocket.router)
+app.include_router(threads.router)
 
 
 @app.get("/")

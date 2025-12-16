@@ -27,12 +27,22 @@ interface Companion {
 interface AIChatProps {
   userId?: string;
   companionId?: string;
+  onCompanionChange?: (id: string) => void;
+  model?: string;
+  presetPrompts?: string[];
   onClose?: () => void;
 }
 
 const API_BASE = '/api/ai';
 
-export function AIChat({ userId = 'user1', companionId = 'flirty', onClose }: AIChatProps) {
+export function AIChat({
+  userId = 'user1',
+  companionId = 'flirty',
+  onCompanionChange,
+  model,
+  presetPrompts = [],
+  onClose,
+}: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,6 +54,14 @@ export function AIChat({ userId = 'user1', companionId = 'flirty', onClose }: AI
   useEffect(() => {
     fetchCompanions();
   }, []);
+
+  // Sync companion when parent changes
+  useEffect(() => {
+    if (companionId && companionId !== selectedCompanion) {
+      setSelectedCompanion(companionId);
+      setMessages([]);
+    }
+  }, [companionId]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -80,7 +98,8 @@ export function AIChat({ userId = 'user1', companionId = 'flirty', onClose }: AI
         body: JSON.stringify({
           user_id: userId,
           companion_id: selectedCompanion,
-          message: input
+          message: input,
+          model,
         })
       });
 
@@ -137,6 +156,7 @@ export function AIChat({ userId = 'user1', companionId = 'flirty', onClose }: AI
             value={selectedCompanion}
             onChange={(e) => {
               setSelectedCompanion(e.target.value);
+              onCompanionChange?.(e.target.value);
               setMessages([]);
             }}
             className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm"
@@ -153,6 +173,21 @@ export function AIChat({ userId = 'user1', companionId = 'flirty', onClose }: AI
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {presetPrompts.length > 0 && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            {presetPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                onClick={() => setInput(prompt)}
+                type="button"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
+
         {messages.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />

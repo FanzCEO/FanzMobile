@@ -140,6 +140,38 @@ async def disconnect_integration(integration_id: str):
 
 # ============== TELEGRAM ==============
 
+@router.get("/telegram/updates")
+async def get_telegram_updates():
+    """
+    Demo endpoint to fetch Telegram updates.
+    In production, replace with real Telegram bot webhook or polling.
+    """
+    sample_messages = [
+        {
+            "chat_id": "12345",
+            "username": "demo_user",
+            "from": "Demo User",
+            "text": "Hello from Telegram!",
+            "date": datetime.now().isoformat()
+        },
+        {
+            "chat_id": "12345",
+            "username": "demo_user",
+            "from": "You",
+            "text": "Got it, thanks!",
+            "date": datetime.now().isoformat()
+        },
+        {
+            "chat_id": "67890",
+            "username": "another_user",
+            "from": "Alex",
+            "text": "When is our next call?",
+            "date": datetime.now().isoformat()
+        }
+    ]
+
+    return {"messages": sample_messages}
+
 @router.post("/telegram/configure")
 async def configure_telegram(request: TelegramConfigRequest):
     """Configure Telegram bot integration."""

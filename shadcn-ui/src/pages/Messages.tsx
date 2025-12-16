@@ -8,22 +8,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/utils/date';
 import { toast } from 'sonner';
-import type { MessageChannel } from '@/types/message';
+import type { MessageChannel, MessageDirection } from '@/types/message';
 
 export default function Messages() {
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState<MessageChannel>('sms');
+  const [composeChannel, setComposeChannel] = useState<MessageChannel>('sms');
+  const [filterChannel, setFilterChannel] = useState<MessageChannel | 'all'>('all');
+  const [filterDirection, setFilterDirection] = useState<MessageDirection | 'all'>('all');
 
   const { data: messages = [], isLoading } = useQuery({
-    queryKey: ['messages'],
-    queryFn: () => messagesApi.getMessages({ limit: 100 }),
+    queryKey: ['messages', filterChannel, filterDirection],
+    queryFn: () =>
+      messagesApi.getMessages({
+        limit: 100,
+        channel: filterChannel === 'all' ? undefined : filterChannel,
+        direction: filterDirection === 'all' ? undefined : filterDirection,
+      }),
   });
 
   const createMessageMutation = useMutation({
     mutationFn: messagesApi.createMessage,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ['messages'], exact: false });
       setNewMessage('');
       toast.success('Message sent successfully');
     },
@@ -36,12 +43,14 @@ export default function Messages() {
     if (!newMessage.trim()) return;
     createMessageMutation.mutate({
       body: newMessage,
-      channel: selectedChannel,
+      channel: composeChannel,
       direction: 'outbound',
     });
   };
 
   const channels: MessageChannel[] = ['sms', 'rm_chat', 'email', 'manual', 'whatsapp'];
+  const filterChannels: (MessageChannel | 'all')[] = ['all', ...channels];
+  const directions: (MessageDirection | 'all')[] = ['all', 'inbound', 'outbound'];
 
   return (
     <div className="space-y-6">
@@ -53,10 +62,34 @@ export default function Messages() {
             Multi-channel conversation management
           </p>
         </div>
-        <Button variant="outline" size="sm" className="w-fit">
-          <Filter className="h-4 w-4 mr-2" />
-          Filter
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center text-xs sm:text-sm text-muted-foreground">
+            <Filter className="h-4 w-4 mr-1" />
+            Filters
+          </span>
+          {filterChannels.map((channel) => (
+            <Button
+              key={channel}
+              variant={filterChannel === channel ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterChannel(channel)}
+              className={`text-xs sm:text-sm ${filterChannel === channel ? 'gradient-primary' : ''}`}
+            >
+              {channel === 'all' ? 'All' : channel.toUpperCase()}
+            </Button>
+          ))}
+          {directions.map((dir) => (
+            <Button
+              key={dir}
+              variant={filterDirection === dir ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterDirection(dir)}
+              className={`text-xs sm:text-sm ${filterDirection === dir ? 'gradient-primary' : ''}`}
+            >
+              {dir === 'all' ? 'Any Direction' : dir}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Message Composer */}
@@ -66,10 +99,10 @@ export default function Messages() {
             {channels.map((channel) => (
               <Button
                 key={channel}
-                variant={selectedChannel === channel ? 'default' : 'outline'}
+                variant={composeChannel === channel ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setSelectedChannel(channel)}
-                className={`text-xs sm:text-sm ${selectedChannel === channel ? 'gradient-primary' : ''}`}
+                onClick={() => setComposeChannel(channel)}
+                className={`text-xs sm:text-sm ${composeChannel === channel ? 'gradient-primary' : ''}`}
               >
                 {channel.toUpperCase()}
               </Button>

@@ -21,6 +21,8 @@ import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import DeleteAccount from './pages/DeleteAccount';
+import Communications from './pages/Communications';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +51,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/delete-account" element={<DeleteAccount />} />
 
               {/* Protected Routes */}
               <Route
@@ -60,6 +63,7 @@ const App = () => (
               >
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/messages" element={<Messages />} />
+                <Route path="/comms" element={<Communications />} />
                 <Route path="/conversations" element={<Conversations />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/calendar" element={<Calendar />} />

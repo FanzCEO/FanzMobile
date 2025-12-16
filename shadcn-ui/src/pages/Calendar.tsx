@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { eventsApi } from '@/lib/api/events';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ export default function Calendar() {
     end_time: '',
     location: '',
   });
+  const [viewMonth, setViewMonth] = useState(() => new Date());
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['events'],
@@ -51,6 +52,66 @@ export default function Calendar() {
 
   const upcomingEvents = events.filter((e) => new Date(e.start_time) > new Date());
   const pastEvents = events.filter((e) => new Date(e.start_time) <= new Date());
+
+  const formatDateKey = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+  const eventsByDay = useMemo(() => {
+    const map: Record<string, typeof events> = {};
+    events.forEach((event) => {
+      const key = formatDateKey(new Date(event.start_time));
+      if (!map[key]) map[key] = [];
+      map[key].push(event);
+    });
+    return map;
+  }, [events]);
+
+  const startOfMonth = useMemo(() => new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1), [viewMonth]);
+  const gridStart = useMemo(() => {
+    const startDay = startOfMonth.getDay(); // 0-6 Sunday start
+    const start = new Date(startOfMonth);
+    start.setDate(start.getDate() - startDay);
+    return start;
+  }, [startOfMonth]);
+
+  const monthDays = useMemo(() => {
+    const days = [];
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+      const key = formatDateKey(date);
+      days.push({
+        date,
+        key,
+        isCurrentMonth: date.getMonth() === viewMonth.getMonth(),
+        isToday: key === formatDateKey(new Date()),
+        events: eventsByDay[key] || [],
+      });
+    }
+    return days;
+  }, [gridStart, viewMonth, eventsByDay]);
+
+  const handlePrevMonth = () => {
+    setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const formatTimeShort = (iso: string) =>
+    new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+
+  const statusBadgeClass = (status: string) => {
+    const map: Record<string, string> = {
+      confirmed: 'bg-green-500/20 text-green-500',
+      tentative: 'bg-yellow-500/20 text-yellow-500',
+      cancelled: 'bg-red-500/20 text-red-500',
+      scheduled: 'bg-blue-500/20 text-blue-500',
+      completed: 'bg-emerald-500/20 text-emerald-500',
+    };
+    return map[status] || 'bg-muted text-foreground';
+  };
 
   return (
     <div className="space-y-6">
@@ -134,26 +195,87 @@ export default function Calendar() {
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading events...</div>
-      ) : events.length === 0 ? (
-        <Card className="glass-panel p-12">
-          <div className="text-center">
-            <img
-              src="/images/NoEvents.jpg"
-              alt="No events"
-              className="w-48 h-48 mx-auto mb-6 opacity-50"
-            />
-            <h3 className="text-xl font-bold mb-2">No events scheduled</h3>
-            <p className="text-muted-foreground mb-6">
-              Create your first event or let AI detect meetings from messages
-            </p>
-            <Button onClick={() => setIsDialogOpen(true)} className="gradient-primary">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Event
-            </Button>
-          </div>
-        </Card>
       ) : (
         <div className="space-y-8">
+          {/* Month View */}
+          <Card className="glass-panel p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-lg font-semibold">
+                  {viewMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex h-2 w-2 rounded-full bg-primary" /> Event day
+                <span className="inline-flex h-2 w-2 rounded-full bg-secondary" /> Today
+              </div>
+            </div>
+            <div className="grid grid-cols-7 text-xs text-muted-foreground mb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="text-center font-medium">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {monthDays.map((day) => (
+                <div
+                  key={day.key}
+                  className={`border rounded-lg p-2 min-h-[110px] flex flex-col gap-2 ${
+                    day.isCurrentMonth ? 'bg-background/60' : 'bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={day.isToday ? 'font-bold text-primary' : ''}>{day.date.getDate()}</span>
+                    {day.events.length > 0 && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <div className="space-y-1">
+                    {day.events.slice(0, 3).map((event) => (
+                      <div
+                        key={event.id}
+                        className="text-xs p-2 rounded-md bg-primary/10 text-foreground border border-primary/20"
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        <div className="text-muted-foreground text-[11px]">
+                          {formatTimeShort(event.start_time)}
+                          {event.location ? ` • ${event.location}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                    {day.events.length > 3 && (
+                      <div className="text-[11px] text-muted-foreground">+{day.events.length - 3} more</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Empty state when no events */}
+          {events.length === 0 && (
+            <Card className="glass-panel p-8 text-center">
+              <img
+                src="/images/NoEvents.jpg"
+                alt="No events"
+                className="w-36 h-36 mx-auto mb-4 opacity-50"
+              />
+              <h3 className="text-xl font-bold mb-2">No events scheduled</h3>
+              <p className="text-muted-foreground mb-6">
+                Create your first event or let AI detect meetings from messages
+              </p>
+              <Button onClick={() => setIsDialogOpen(true)} className="gradient-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Event
+              </Button>
+            </Card>
+          )}
+
           {/* Upcoming Events */}
           {upcomingEvents.length > 0 && (
             <div>
@@ -166,16 +288,7 @@ export default function Calendar() {
                   <Card key={event.id} className="glass-panel p-6 hover:scale-105 transition-transform">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-bold text-lg">{event.title}</h3>
-                      <Badge
-                        variant="outline"
-                        className={
-                          event.status === 'confirmed'
-                            ? 'bg-green-500/20 text-green-500'
-                            : event.status === 'tentative'
-                            ? 'bg-yellow-500/20 text-yellow-500'
-                            : 'bg-red-500/20 text-red-500'
-                        }
-                      >
+                      <Badge variant="outline" className={statusBadgeClass(event.status)}>
                         {event.status}
                       </Badge>
                     </div>

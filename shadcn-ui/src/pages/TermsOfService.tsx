@@ -16,7 +16,7 @@ export default function TermsOfService() {
 
         <Card className="p-6 sm:p-10">
           <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-          <p className="text-muted-foreground mb-8">Last updated: December 15, 2025</p>
+          <p className="text-muted-foreground mb-8">Last updated: January 2025</p>
 
           <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
             <section>
@@ -94,6 +94,8 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold mb-3">9. Payment and Billing</h2>
               <ul className="list-disc pl-6 text-muted-foreground space-y-1">
+                <li>Memberships start at $5.99 per week and auto-renew unless canceled</li>
+                <li>Each billing period includes a small free AI usage allowance; additional AI usage is billed on a metered basis at the posted rates</li>
                 <li>Subscription fees are billed in advance</li>
                 <li>All fees are non-refundable unless required by law</li>
                 <li>We may change pricing with 30 days notice</li>

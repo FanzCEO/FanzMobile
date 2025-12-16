@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 import type { LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth';
 
+const DELETE_ACCOUNT_URL = import.meta.env.VITE_DELETE_ACCOUNT_URL || '/api/user/data';
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const formData = new URLSearchParams();
@@ -23,5 +25,10 @@ export const authApi = {
   logout: () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
+  },
+
+  requestAccountDeletion: async () => {
+    const response = await apiClient.delete(DELETE_ACCOUNT_URL);
+    return response.data;
   },
 };

@@ -134,7 +134,7 @@ export default function Workflows() {
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ['workflows'],
     queryFn: async () => {
-      const response = await apiClient.get<Workflow[]>('/workflows');
+      const response = await apiClient.get<Workflow[]>('/api/workflows');
       return response.data;
     },
   });
@@ -143,7 +143,7 @@ export default function Workflows() {
     queryKey: ['workflow-logs', selectedWorkflow?.id],
     queryFn: async () => {
       if (!selectedWorkflow) return [];
-      const response = await apiClient.get<WorkflowLog[]>(`/workflows/${selectedWorkflow.id}/logs`);
+      const response = await apiClient.get<WorkflowLog[]>(`/api/workflows/${selectedWorkflow.id}/logs`);
       return response.data;
     },
     enabled: !!selectedWorkflow && logsDialogOpen,
@@ -151,7 +151,7 @@ export default function Workflows() {
 
   const toggleMutation = useMutation({
     mutationFn: async (workflowId: string) => {
-      const response = await apiClient.post(`/workflows/${workflowId}/toggle`);
+      const response = await apiClient.post(`/api/workflows/${workflowId}/toggle`);
       return response.data;
     },
     onSuccess: () => {
@@ -165,7 +165,7 @@ export default function Workflows() {
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Workflow>) => {
-      const response = await apiClient.post('/workflows', data);
+      const response = await apiClient.post('/api/workflows', data);
       return response.data;
     },
     onSuccess: () => {
@@ -181,7 +181,7 @@ export default function Workflows() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Workflow> }) => {
-      const response = await apiClient.patch(`/workflows/${id}`, data);
+      const response = await apiClient.patch(`/api/workflows/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -197,7 +197,7 @@ export default function Workflows() {
 
   const deleteMutation = useMutation({
     mutationFn: async (workflowId: string) => {
-      await apiClient.delete(`/workflows/${workflowId}`);
+      await apiClient.delete(`/api/workflows/${workflowId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });

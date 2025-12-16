@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bot
+  Bot,
+  Radio
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Comms', href: '/comms', icon: Radio },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Workflows', href: '/workflows', icon: Workflow },

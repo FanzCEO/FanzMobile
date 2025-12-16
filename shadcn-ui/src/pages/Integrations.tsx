@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign } from 'lucide-react';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { apiClient } from '@/lib/api/client';
+import type { IntegrationProvider } from '@/types/integration';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,13 +19,16 @@ import {
 import { toast } from 'sonner';
 
 interface IntegrationConfig {
-  provider: string;
+  provider: IntegrationProvider;
   name: string;
   description: string;
   icon: React.ReactNode;
   price: string;
   fields: { name: string; label: string; placeholder: string; type?: string }[];
   configEndpoint?: string;
+  badge?: 'free' | 'beta' | 'comingsoon' | 'premium';
+  category?: 'Messaging' | 'Sync' | 'Productivity';
+  comingSoon?: boolean;
 }
 
 const INTEGRATION_CONFIGS: IntegrationConfig[] = [
@@ -94,6 +98,61 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     price: 'FREE',
     fields: [],
   },
+  {
+    provider: 'slack',
+    name: 'Slack',
+    description: 'DMs and channels for team collaboration',
+    icon: <MessageSquare className="h-8 w-8 text-purple-400" />,
+    price: 'Coming soon',
+    fields: [],
+    badge: 'comingsoon',
+    category: 'Messaging',
+    comingSoon: true,
+  },
+  {
+    provider: 'discord',
+    name: 'Discord',
+    description: 'Community channels and DMs for fans',
+    icon: <MessageSquare className="h-8 w-8 text-indigo-400" />,
+    price: 'Coming soon',
+    fields: [],
+    badge: 'comingsoon',
+    category: 'Messaging',
+    comingSoon: true,
+  },
+  {
+    provider: 'gmail',
+    name: 'Gmail / IMAP',
+    description: 'Sync email threads (read-only to start)',
+    icon: <Mail className="h-8 w-8 text-red-400" />,
+    price: 'Beta soon',
+    fields: [],
+    badge: 'beta',
+    category: 'Messaging',
+    comingSoon: true,
+  },
+  {
+    provider: 'webhook',
+    name: 'Webhooks & Zapier',
+    description: 'Send events to Zapier, Make, or custom URLs',
+    icon: <ExternalLink className="h-8 w-8 text-amber-400" />,
+    price: 'Beta soon',
+    fields: [],
+    badge: 'beta',
+    category: 'Productivity',
+    comingSoon: true,
+  },
+  {
+    provider: 'notion',
+    name: 'Notion CRM',
+    description: 'Sync contacts and deals into Notion databases',
+    icon: <Database className="h-8 w-8 text-teal-400" />,
+    price: 'Coming soon',
+    fields: [],
+    badge: 'comingsoon',
+    category: 'Productivity',
+    comingSoon: true,
+  },
 ];
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -119,7 +178,7 @@ export default function Integrations() {
         return response.data;
       }
       return integrationsApi.connectIntegration({
-        provider: config.provider as any,
+        provider: config.provider,
         metadata: data,
       });
     },
@@ -146,6 +205,10 @@ export default function Integrations() {
   });
 
   const handleConnect = (config: IntegrationConfig) => {
+    if (config.comingSoon) {
+      toast.info(`${config.name} is coming soon. Join the waitlist to get access first.`);
+      return;
+    }
     if (config.fields.length === 0) {
       if (config.provider === 'google_calendar') {
         window.location.href = buildApiUrl('/integrations/google/auth-url');
@@ -190,9 +253,17 @@ export default function Integrations() {
       toast.success('Message sent successfully!');
       setSendDialog(null);
       setSendData({ to: '', body: '' });
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail || error?.message || 'Failed to send message';
-      toast.error(detail);
+    } catch (error: unknown) {
+      const detail =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        (error as { response?: { data?: { detail?: string } } }).response
+          ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : error instanceof Error
+            ? error.message
+            : null;
+      toast.error(detail || 'Failed to send message');
     }
   };
 
@@ -206,7 +277,7 @@ export default function Integrations() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gradient">Integrations</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Connect messaging platforms
+            Connect messaging platforms - from FREE to premium
           </p>
         </div>
       </div>
@@ -254,10 +325,25 @@ export default function Integrations() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-bold text-base sm:text-lg">{config.name}</h3>
-                    <Badge variant="outline" className={`text-xs ${config.price === 'FREE' ? 'text-green-400 border-green-400' : 'text-yellow-400 border-yellow-400'}`}>
+                    <Badge
+                      variant={config.badge === 'comingsoon' ? 'secondary' : 'outline'}
+                      className={`text-xs ${
+                        config.badge === 'comingsoon'
+                          ? 'bg-white/10 text-muted-foreground'
+                          : config.price === 'FREE'
+                          ? 'text-green-400 border-green-400'
+                          : 'text-yellow-400 border-yellow-400'
+                      }`}
+                    >
                       <DollarSign className="h-3 w-3 mr-1" />
                       {config.price}
                     </Badge>
+                    {config.badge === 'beta' && (
+                      <Badge variant="outline" className="text-xs text-amber-400 border-amber-400">Beta</Badge>
+                    )}
+                    {config.badge === 'comingsoon' && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/50">Coming soon</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     {connected ? (
@@ -288,6 +374,10 @@ export default function Integrations() {
                           Disconnect
                         </Button>
                       </>
+                    ) : config.comingSoon ? (
+                      <Button size="sm" variant="outline" className="text-xs" disabled>
+                        Coming soon
+                      </Button>
                     ) : (
                       <Button size="sm" className="gradient-primary text-xs" onClick={() => handleConnect(config)}>
                         <Plug className="h-4 w-4 mr-2" />

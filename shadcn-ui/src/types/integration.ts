@@ -1,4 +1,18 @@
-export type IntegrationProvider = 'google_calendar' | 'outlook' | 'twilio' | 'telnyx' | 'telegram' | 'rm_chat' | 'whatsapp';
+export type IntegrationProvider =
+  | 'google_calendar'
+  | 'outlook'
+  | 'twilio'
+  | 'telnyx'
+  | 'telegram'
+  | 'rm_chat'
+  | 'whatsapp'
+  | 'slack'
+  | 'discord'
+  | 'smtp'
+  | 'imap'
+  | 'gmail'
+  | 'webhook'
+  | 'notion';
 
 export interface Integration {
   id: string;

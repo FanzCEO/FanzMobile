@@ -9,6 +9,7 @@ import { AIChat } from '@/components/ai/AIChat';
 import { AIMessageDraft } from '@/components/ai/AIMessageDraft';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
 interface AIHealthStatus {
   status: string;
@@ -20,6 +21,8 @@ interface AIHealthStatus {
 export default function AIAssistant() {
   const [activeTab, setActiveTab] = useState<'chat' | 'draft' | 'suggestions'>('chat');
   const [health, setHealth] = useState<AIHealthStatus | null>(null);
+  const [activeCompanion, setActiveCompanion] = useState<string>('flirty');
+  const [selectedModel, setSelectedModel] = useState<string>('openai-4o-mini');
 
   useEffect(() => {
     fetchHealth();
@@ -40,6 +43,20 @@ export default function AIAssistant() {
     { id: 'draft', label: 'Message Drafts', icon: MessageSquare, description: 'Generate message drafts' },
     { id: 'suggestions', label: 'Content Ideas', icon: Sparkles, description: 'Get content suggestions' },
   ];
+
+  const modelOptions = [
+    { id: 'openai-4o-mini', label: 'OpenAI 4o mini', detail: 'Fast, smart default' },
+    { id: 'openai-3.5', label: 'OpenAI 3.5', detail: 'Cost-effective fallback' },
+    { id: 'huggingface', label: 'Hugging Face', detail: 'Uses your HF token (Settings)' },
+    { id: 'demo', label: 'Demo', detail: 'Offline/demo responses' },
+  ];
+
+  const companionPrompts: Record<string, string[]> = {
+    flirty: ['Send a flirty opener', 'Plan a playful date idea', 'Turn this into a tease'],
+    luna: ['Write a bubbly greeting', 'Suggest a fun voice note', 'Turn this into a cute reply'],
+    shadow: ['Make this mysterious', 'Write a curious hook', 'Turn this into a slow-burn tease'],
+    morgan: ['Summarize the chat', 'Draft a concise follow-up', 'Bullet the key points'],
+  };
 
   return (
     <div className="space-y-6">
@@ -71,6 +88,14 @@ export default function AIAssistant() {
       </div>
 
       {/* Feature Cards */}
+      <CardSelector
+        title="Model & Mode"
+        items={modelOptions}
+        selected={selectedModel}
+        onSelect={setSelectedModel}
+        status={health?.api_key_configured ? 'Live' : 'Demo'}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {tabs.map(tab => (
           <button
@@ -105,7 +130,13 @@ export default function AIAssistant() {
         <div className="lg:col-span-2">
           {activeTab === 'chat' && (
             <div className="h-[600px]">
-              <AIChat userId="user1" companionId="flirty" />
+              <AIChat
+                userId="user1"
+                companionId={activeCompanion}
+                onCompanionChange={setActiveCompanion}
+                model={selectedModel}
+                presetPrompts={companionPrompts[activeCompanion] || []}
+              />
             </div>
           )}
 
@@ -157,28 +188,52 @@ export default function AIAssistant() {
             </h3>
             <div className="space-y-3">
               <PersonalityCard
+                id="flirty"
                 name="Raven"
                 tone="Flirty"
                 description="Playful, confident, seductive"
                 gradient="from-pink-500 to-purple-500"
+                active={activeCompanion === 'flirty'}
+                onSelect={() => {
+                  setActiveCompanion('flirty');
+                  setActiveTab('chat');
+                }}
               />
               <PersonalityCard
+                id="luna"
                 name="Luna"
                 tone="Playful"
                 description="Bubbly, fun, affectionate"
                 gradient="from-cyan-500 to-blue-500"
+                active={activeCompanion === 'luna'}
+                onSelect={() => {
+                  setActiveCompanion('luna');
+                  setActiveTab('chat');
+                }}
               />
               <PersonalityCard
+                id="shadow"
                 name="Shadow"
                 tone="Mysterious"
                 description="Enigmatic, intriguing, alluring"
                 gradient="from-purple-500 to-indigo-500"
+                active={activeCompanion === 'shadow'}
+                onSelect={() => {
+                  setActiveCompanion('shadow');
+                  setActiveTab('chat');
+                }}
               />
               <PersonalityCard
+                id="morgan"
                 name="Morgan"
                 tone="Professional"
                 description="Helpful, efficient, knowledgeable"
                 gradient="from-green-500 to-teal-500"
+                active={activeCompanion === 'morgan'}
+                onSelect={() => {
+                  setActiveCompanion('morgan');
+                  setActiveTab('chat');
+                }}
               />
             </div>
           </div>
@@ -188,14 +243,24 @@ export default function AIAssistant() {
   );
 }
 
-function PersonalityCard({ name, tone, description, gradient }: {
+function PersonalityCard({ id, name, tone, description, gradient, active, onSelect }: {
+  id: string;
   name: string;
   tone: string;
   description: string;
   gradient: string;
+  active?: boolean;
+  onSelect?: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+    <button
+      onClick={() => onSelect?.(id)}
+      className={cn(
+        "w-full flex items-center gap-3 p-2 rounded-lg transition-colors border",
+        active ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/5"
+      )}
+      type="button"
+    >
       <div className={cn("w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center", gradient)}>
         <span className="text-sm font-bold text-white">{name[0]}</span>
       </div>
@@ -204,7 +269,7 @@ function PersonalityCard({ name, tone, description, gradient }: {
         <p className="text-xs text-muted-foreground truncate">{description}</p>
       </div>
       <span className="text-xs bg-white/10 px-2 py-1 rounded">{tone}</span>
-    </div>
+    </button>
   );
 }
 
@@ -280,5 +345,52 @@ function ContentSuggestions() {
         </div>
       )}
     </div>
+  );
+}
+
+function CardSelector({
+  title,
+  items,
+  selected,
+  onSelect,
+  status,
+}: {
+  title: string;
+  items: { id: string; label: string; detail?: string }[];
+  selected: string;
+  onSelect: (id: string) => void;
+  status?: string;
+}) {
+  return (
+    <Card className="glass-panel p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <h3 className="text-lg font-semibold">Pick a model</h3>
+        </div>
+        {status && (
+          <span className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10">
+            {status}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.id)}
+            className={cn(
+              'text-left p-3 rounded-lg border transition-all',
+              selected === item.id
+                ? 'border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]'
+                : 'border-white/10 hover:border-white/20'
+            )}
+          >
+            <div className="font-medium text-sm">{item.label}</div>
+            {item.detail && <div className="text-xs text-muted-foreground mt-1">{item.detail}</div>}
+          </button>
+        ))}
+      </div>
+    </Card>
   );
 }

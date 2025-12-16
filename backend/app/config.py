@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql://crm_user:change_me@localhost:5432/crm_escort"
+    supabase_service_role_key: str = ""
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -41,6 +42,14 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     together_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+
+    # Supabase
+    supabase_service_role_key: str = ""
+
+    # LiveKit (Voice/PTT)
+    livekit_url: str = ""
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
 
     class Config:
         env_file = ".env"
