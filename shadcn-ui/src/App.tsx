@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { AppLayout } from './components/layout/AppLayout';
@@ -49,7 +51,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    SplashScreen.hide();
+  }, []);
+
+  return (
   <ThemeProvider>
     <AccessibilityProvider>
       <QueryClientProvider client={queryClient}>
@@ -95,6 +102,7 @@ const App = () => (
       </QueryClientProvider>
     </AccessibilityProvider>
   </ThemeProvider>
-);
+  );
+};
 
 export default App;
