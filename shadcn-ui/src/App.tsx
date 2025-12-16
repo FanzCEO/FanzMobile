@@ -1,7 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { AppLayout } from './components/layout/AppLayout';
@@ -23,6 +23,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import DeleteAccount from './pages/DeleteAccount';
 import Communications from './pages/Communications';
+import Billing from './pages/Billing';
+import AdminConsole from './pages/AdminConsole';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,8 +36,17 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
+
+  const accessKnown = user && ('comped' in user || 'active_subscription' in user);
+  const hasAccess = Boolean(user?.comped) || Boolean(user?.active_subscription);
+  const onBillingPage = location.pathname === '/billing';
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (accessKnown && !hasAccess && !onBillingPage) return <Navigate to="/billing" replace />;
+
+  return <>{children}</>;
 }
 
 const App = () => (
@@ -71,6 +82,8 @@ const App = () => (
                 <Route path="/integrations" element={<Integrations />} />
                 <Route path="/import" element={<Import />} />
                 <Route path="/ai" element={<AIAssistant />} />
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/admin" element={<AdminConsole />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
 

@@ -15,7 +15,9 @@ import {
   Menu,
   X,
   Bot,
-  Radio
+  Radio,
+  CreditCard,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,8 @@ const navigation = [
   { name: 'Integrations', href: '/integrations', icon: Plug },
   { name: 'Import', href: '/import', icon: Upload },
   { name: 'AI Assistant', href: '/ai', icon: Bot },
+  { name: 'Billing', href: '/billing', icon: CreditCard },
+  { name: 'Admin', href: '/admin', icon: Shield },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

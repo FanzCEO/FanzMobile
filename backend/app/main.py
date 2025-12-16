@@ -25,6 +25,7 @@ from app.routers import (
     livekit,
     websocket,
     threads,
+    billing,
 )
 from app.database import Base, engine
 from app.models import payments  # noqa: F401 - ensure models are registered
@@ -83,6 +84,7 @@ app.include_router(admin.router)
 app.include_router(livekit.router)
 app.include_router(websocket.router)
 app.include_router(threads.router)
+app.include_router(billing.router)
 
 
 @app.get("/")

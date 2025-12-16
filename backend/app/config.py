@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     together_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
-    # Supabase
-    supabase_service_role_key: str = ""
+    # Admin
+    admin_api_key: str = ""
 
     # LiveKit (Voice/PTT)
     livekit_url: str = ""

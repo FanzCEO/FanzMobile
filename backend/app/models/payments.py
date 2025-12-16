@@ -81,3 +81,92 @@ class WebhookEvent(Base):
     processed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
+
+
+class PlatformFee(Base):
+    """Platform fees charged to consumers per transaction type."""
+    __tablename__ = "platform_fees"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    transaction_type = Column(String(64), unique=True, nullable=False)  # subscription, tip, ppv, etc.
+    percent = Column(Integer, nullable=False, default=0)  # Stored as basis points (500 = 5.00%)
+    flat_cents = Column(Integer, nullable=False, default=0)  # Flat fee in cents
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UsagePolicy(Base):
+    """Usage-based charging policy (e.g., AI usage over free allowance)."""
+    __tablename__ = "usage_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(128), unique=True, nullable=False)  # e.g., ai_usage
+    free_units = Column(Integer, nullable=False, default=0)  # Free units (e.g., 10_000 tokens)
+    unit = Column(String(32), nullable=False, default="tokens")  # tokens, seconds, messages
+    overage_cents_per_unit = Column(Integer, nullable=False, default=0)  # Cost per unit over free allowance
+    notes = Column(String(512), nullable=True)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Thread(Base):
+    """Communication threads for PTT/messaging."""
+    __tablename__ = "comm_threads"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    description = Column(String(1000), nullable=True)
+    channel = Column(String(64), nullable=True)  # PTT, SMS, WhatsApp, etc.
+    created_by = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ThreadEvent(Base):
+    """Events within a thread (messages, voice clips, etc.)."""
+    __tablename__ = "comm_thread_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    thread_id = Column(UUID(as_uuid=True), nullable=False)
+    event_type = Column(String(32), nullable=False, default="message")  # message, voice, join, leave, ptt_start, ptt_end
+    user_id = Column(String(64), nullable=True)
+    body = Column(String(4000), nullable=True)
+    channel = Column(String(64), nullable=True)
+    extra_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AdminUser(Base):
+    """Admin users with elevated privileges."""
+    __tablename__ = "admin_users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(64), unique=True, nullable=False)
+    role = Column(String(32), nullable=False, default="admin")  # admin, superadmin
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserAccess(Base):
+    """Admin-managed access flags for users (comped/subscription)."""
+    __tablename__ = "user_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False)
+    comped = Column(Boolean, default=False)
+    active_subscription = Column(Boolean, default=False)
+    subscription_plan = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FeatureToggle(Base):
+    """Feature toggles controlled by admin panel."""
+    __tablename__ = "feature_toggles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    key = Column(String(64), unique=True, nullable=False)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

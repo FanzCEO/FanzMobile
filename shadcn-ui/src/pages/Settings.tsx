@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Key, Bell, Shield, Palette, Accessibility, FileText, ExternalLink } from 'lucide-react';
+import { User, Key, Bell, Shield, Palette, Accessibility, FileText, ExternalLink, DollarSign, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAccessibility } from '@/contexts/AccessibilityContext';
+import { billingApi, FeeConfig } from '@/lib/api/billing';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,80 @@ export default function Settings() {
     huggingface_token: '',
     huggingface_endpoint: '',
   });
+
+  const [fees, setFees] = useState<Record<string, FeeConfig>>({});
+  const [feesLoading, setFeesLoading] = useState(false);
+  const [savingFee, setSavingFee] = useState<string | null>(null);
+  const [newFeeType, setNewFeeType] = useState('');
+  const [showAddFee, setShowAddFee] = useState(false);
+
+  useEffect(() => {
+    loadFees();
+  }, []);
+
+  const loadFees = async () => {
+    setFeesLoading(true);
+    try {
+      const data = await billingApi.getFees();
+      setFees(data.fees);
+    } catch (error) {
+      // Fees endpoint may not be available yet
+      console.error('Failed to load fees:', error);
+    } finally {
+      setFeesLoading(false);
+    }
+  };
+
+  const handleFeeChange = (type: string, field: 'percent' | 'flat_cents', value: string) => {
+    const numValue = field === 'percent' ? parseFloat(value) || 0 : parseInt(value) || 0;
+    setFees((prev) => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [field]: numValue,
+      },
+    }));
+  };
+
+  const handleSaveFee = async (type: string) => {
+    setSavingFee(type);
+    try {
+      await billingApi.updateFee(type, fees[type].percent, fees[type].flat_cents);
+      toast.success(`${type} fee updated`);
+    } catch (error) {
+      toast.error('Failed to update fee');
+    } finally {
+      setSavingFee(null);
+    }
+  };
+
+  const handleCreateFee = async () => {
+    if (!newFeeType.trim()) {
+      toast.error('Please enter a transaction type name');
+      return;
+    }
+    const typeName = newFeeType.trim().toLowerCase().replace(/\s+/g, '_');
+    try {
+      await billingApi.createFee(typeName, 0, 0);
+      toast.success(`Created fee type: ${typeName}`);
+      setNewFeeType('');
+      setShowAddFee(false);
+      loadFees();
+    } catch (error) {
+      toast.error('Failed to create fee type');
+    }
+  };
+
+  const handleDeleteFee = async (type: string) => {
+    if (!confirm(`Delete fee type "${type}"?`)) return;
+    try {
+      await billingApi.deleteFee(type);
+      toast.success(`Deleted fee type: ${type}`);
+      loadFees();
+    } catch (error) {
+      toast.error('Failed to delete fee type');
+    }
+  };
 
   const handleSaveProfile = () => {
     toast.success('Profile updated successfully');
@@ -89,6 +164,10 @@ export default function Settings() {
           <TabsTrigger value="legal">
             <FileText className="h-4 w-4 mr-2" />
             Legal
+          </TabsTrigger>
+          <TabsTrigger value="billing">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Platform Fees
           </TabsTrigger>
         </TabsList>
 
@@ -493,6 +572,119 @@ export default function Settings() {
                 </p>
               </div>
             </div>
+          </Card>
+        </TabsContent>
+
+        {/* Billing / Platform Fees Tab */}
+        <TabsContent value="billing">
+          <Card className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold">Platform Fees</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddFee(!showAddFee)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Fee Type
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Set fees charged to end consumers (not content creators). Each transaction type can have a percentage fee and/or a flat fee.
+            </p>
+
+            {showAddFee && (
+              <div className="p-4 rounded-lg border bg-primary/5 mb-6">
+                <h3 className="font-semibold mb-3">Create New Fee Type</h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., live_stream, video_call"
+                    value={newFeeType}
+                    onChange={(e) => setNewFeeType(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleCreateFee}>Create</Button>
+                  <Button variant="outline" onClick={() => setShowAddFee(false)}>Cancel</Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Use lowercase with underscores (e.g., video_call, live_stream)
+                </p>
+              </div>
+            )}
+
+            {feesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : Object.keys(fees).length === 0 ? (
+              <p className="text-muted-foreground py-4">No fee configurations found. The backend may not be running.</p>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(fees).map(([type, config]) => (
+                  <div key={type} className="p-4 rounded-lg border bg-muted/20">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold capitalize">{type.replace(/_/g, ' ')}</h3>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveFee(type)}
+                          disabled={savingFee === type}
+                        >
+                          {savingFee === type ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Save'
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteFee(type)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`${type}-percent`}>Percentage Fee (%)</Label>
+                        <Input
+                          id={`${type}-percent`}
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={config.percent}
+                          onChange={(e) => handleFeeChange(type, 'percent', e.target.value)}
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          e.g., 10 = 10% of transaction
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor={`${type}-flat`}>Flat Fee (cents)</Label>
+                        <Input
+                          id={`${type}-flat`}
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={config.flat_cents}
+                          onChange={(e) => handleFeeChange(type, 'flat_cents', e.target.value)}
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          e.g., 99 = $0.99 flat fee
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-3">
+                      Consumer pays: <span className="font-medium">subtotal + {config.percent}% + ${(config.flat_cents / 100).toFixed(2)}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>

@@ -3,6 +3,9 @@ export interface User {
   email: string;
   full_name: string | null;
   created_at: string;
+  comped?: boolean;
+  active_subscription?: boolean;
+  subscription_plan?: string | null;
 }
 
 export interface LoginRequest {

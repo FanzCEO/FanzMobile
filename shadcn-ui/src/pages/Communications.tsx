@@ -13,6 +13,8 @@ import type { Thread, ThreadEvent } from '@/types/thread';
 import { toast } from 'sonner';
 import { useRealtime } from '@/lib/realtime';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { livekitApi } from '@/lib/livekit';
+import { useEffect } from 'react';
 
 const MOCK_THREADS: Thread[] = [
   {
@@ -63,6 +65,10 @@ export default function Communications() {
   const [selectedThreadId, setSelectedThreadId] = useState<string>('thread-1');
   const [reply, setReply] = useState('');
   const [pttActive, setPttActive] = useState(false);
+  const [pttReady, setPttReady] = useState(false);
+  const [pttError, setPttError] = useState<string | null>(null);
+  const [pttRoom, setPttRoom] = useState<any>(null);
+  const [pttTrack, setPttTrack] = useState<any>(null);
 
   const { data: threads = MOCK_THREADS } = useQuery({
     queryKey: ['threads'],
@@ -133,6 +139,84 @@ export default function Communications() {
       });
     },
   });
+
+  const cleanupPtt = async () => {
+    try {
+      if (pttTrack) {
+        await pttTrack.stop?.();
+      }
+      if (pttRoom) {
+        await pttRoom.disconnect?.();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPttTrack(null);
+      setPttRoom(null);
+      setPttReady(false);
+    }
+  };
+
+  const handleJoinPtt = async () => {
+    setPttError(null);
+    if (!livekitConfigured) {
+      setPttError('LiveKit not configured');
+      return;
+    }
+    try {
+      const roomName = roomId;
+      const identity = userId || 'anonymous';
+      const token = await livekitApi.getToken(roomName, identity);
+      // Lazy load livekit-client from CDN to avoid bundling/install failure
+      const lk = await import(/* @vite-ignore */ 'https://esm.sh/livekit-client@2.8.2');
+      const room = await lk.connect(import.meta.env.VITE_LIVEKIT_URL as string, token, {
+        autoSubscribe: true,
+      });
+      const micTrack = await lk.createLocalAudioTrack();
+      await room.localParticipant.publishTrack(micTrack);
+      await micTrack.mute?.();
+      setPttTrack(micTrack);
+      setPttRoom(room);
+      setPttReady(true);
+      toast.success('PTT connected');
+    } catch (error) {
+      console.error('PTT join failed', error);
+      setPttError('PTT join failed');
+      await cleanupPtt();
+    }
+  };
+
+  const handleLeavePtt = async () => {
+    await cleanupPtt();
+    toast.message('PTT disconnected');
+  };
+
+  const handlePttDown = async () => {
+    if (!pttTrack) return;
+    setPttActive(true);
+    try {
+      await pttTrack.unmute?.();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handlePttUp = async () => {
+    if (!pttTrack) return;
+    setPttActive(false);
+    try {
+      await pttTrack.mute?.();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      cleanupPtt();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSend = async () => {
     if (!reply.trim()) return;
@@ -253,11 +337,12 @@ export default function Communications() {
               </Button>
               <Button
                 variant="outline"
-                onMouseDown={() => setPttActive(true)}
-                onMouseUp={() => setPttActive(false)}
+                onMouseDown={handlePttDown}
+                onMouseUp={handlePttUp}
+                disabled={!pttReady}
               >
                 {pttActive ? <MicOff className="h-4 w-4 mr-2" /> : <Mic className="h-4 w-4 mr-2" />}
-                {pttActive ? 'Release to stop' : 'Hold to talk'}
+                {pttReady ? (pttActive ? 'Release to stop' : 'Hold to talk') : 'Join PTT first'}
               </Button>
               <Button variant="outline" className="gap-1">
                 <Bot className="h-4 w-4" />
@@ -277,31 +362,51 @@ export default function Communications() {
                 <p className="text-xs text-muted-foreground">Live voice for fleets</p>
               </div>
             </div>
-            <div className="rounded-lg border border-white/10 p-3 bg-white/5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Radio className="h-4 w-4 text-primary" />
-                  <span>Channel: Fleet Dispatch</span>
+              <div className="rounded-lg border border-white/10 p-3 bg-white/5 space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Radio className="h-4 w-4 text-primary" />
+                    <span>Channel: Fleet Dispatch</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                  {livekitConfigured ? (pttReady ? 'Connected' : 'Ready') : 'Not set'}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {livekitConfigured ? 'Ready' : 'Not set'}
-                </Badge>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    className="w-full gradient-primary"
+                    disabled={!livekitConfigured || pttReady}
+                    onClick={handleJoinPtt}
+                  >
+                    {pttReady ? 'Connected' : 'Join PTT'}
+                  </Button>
+                  {pttReady && (
+                    <Button variant="outline" className="w-full" onClick={handleLeavePtt}>
+                      Leave PTT
+                    </Button>
+                  )}
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={!pttReady}
+                    onMouseDown={handlePttDown}
+                    onMouseUp={handlePttUp}
+                  >
+                    {pttActive ? 'Broadcasting…' : 'Hold to Talk'}
+                  </Button>
+                </div>
+                {!livekitConfigured && (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-amber-400" />
+                    Set VITE_LIVEKIT_URL/API_KEY/API_SECRET to enable PTT
+                  </p>
+                )}
+                {pttError && (
+                  <p className="text-xs text-destructive mt-2">
+                    {pttError}
+                  </p>
+                )}
               </div>
-              <Button
-                className="w-full gradient-primary"
-                disabled={!livekitConfigured}
-                onMouseDown={() => setPttActive(true)}
-                onMouseUp={() => setPttActive(false)}
-              >
-                {pttActive ? 'Broadcasting…' : 'Hold to Talk'}
-              </Button>
-              {!livekitConfigured && (
-                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3 text-amber-400" />
-                  Set VITE_LIVEKIT_URL/API_KEY/API_SECRET to enable PTT
-                </p>
-              )}
-            </div>
             <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
               <Badge variant="secondary">Recording</Badge>
               <Badge variant="secondary">Transcription</Badge>
