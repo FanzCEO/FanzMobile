@@ -29,6 +29,10 @@ class FeatureToggleRequest(BaseModel):
     logging_enabled: Optional[bool] = None
 
 
+class PaymentProviderRequest(BaseModel):
+    config: dict
+
+
 def ensure_feature_toggles(db: Session):
     """Ensure default feature toggles exist."""
     for key, default_enabled in DEFAULT_FEATURE_TOGGLES.items():
@@ -70,6 +74,49 @@ def list_webhooks(db: Session = Depends(get_db), _=Depends(require_admin)):
         .limit(200)
         .all()
     )
+
+
+@router.get("/payment-providers")
+def list_payment_providers(db: Session = Depends(get_db), _=Depends(require_admin)):
+    """List stored payment provider configs (metadata only; secrets remain in config)."""
+    providers = db.query(payments.PaymentProviderConfig).all()
+    return [
+        {
+            "provider": p.provider,
+            "config": p.config or {},
+            "updated_at": p.updated_at.isoformat(),
+            "created_at": p.created_at.isoformat(),
+        }
+        for p in providers
+    ]
+
+
+@router.put("/payment-providers/{provider}")
+def upsert_payment_provider(
+    provider: str,
+    request: PaymentProviderRequest,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Upsert payment provider credentials/config."""
+    record = (
+        db.query(payments.PaymentProviderConfig)
+        .filter(payments.PaymentProviderConfig.provider == provider)
+        .first()
+    )
+    if not record:
+        record = payments.PaymentProviderConfig(provider=provider, config=request.config)
+        db.add(record)
+    else:
+        record.config = request.config
+
+    db.commit()
+    db.refresh(record)
+    return {
+        "provider": record.provider,
+        "config": record.config or {},
+        "updated_at": record.updated_at.isoformat(),
+    }
 
 
 @router.post("/users/access")
