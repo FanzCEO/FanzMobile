@@ -21,13 +21,25 @@ earlyLogEl.style.whiteSpace = 'pre-wrap';
 earlyLogEl.style.background = 'rgba(0,0,0,0.7)';
 earlyLogEl.style.padding = '8px';
 earlyLogEl.style.borderRadius = '8px';
+earlyLogEl.style.maxHeight = '50vh';
+earlyLogEl.style.overflow = 'auto';
 earlyLogEl.style.display = 'none';
 document.body.appendChild(earlyLogEl);
 
-function logEarly(msg: string) {
-  earlyLogEl.textContent = msg;
+function logEarly(msg: string, append = false) {
+  if (append && earlyLogEl.textContent) {
+    earlyLogEl.textContent += '\n\n---\n' + msg;
+  } else {
+    earlyLogEl.textContent = msg;
+  }
   earlyLogEl.style.display = 'block';
+  // Also log to console for Xcode/Safari debug
+  console.error('[EarlyError]', msg);
 }
+
+// Log environment info for debugging
+const envInfo = `Platform: ${navigator.userAgent}\nURL: ${window.location.href}\nAPI: ${import.meta.env.VITE_API_BASE_URL || 'localhost:8000 (default)'}`;
+console.log('[AppInit]', envInfo);
 
 window.addEventListener('error', (ev) => {
   const payload = [
@@ -36,7 +48,7 @@ window.addEventListener('error', (ev) => {
     ev.filename + ':' + ev.lineno + ':' + ev.colno,
     ev.error && ev.error.stack ? ev.error.stack : '',
   ].join('\n');
-  logEarly(payload);
+  logEarly(payload, true);
 });
 
 window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
@@ -46,21 +58,31 @@ window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
     reason.message || String(reason),
     reason.stack || '',
   ].join('\n');
-  logEarly(payload);
+  logEarly(payload, true);
 });
 
 if (rootEl) {
-  const root = createRoot(rootEl);
-  root.render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
+  try {
+    console.log('[AppInit] Creating React root...');
+    const root = createRoot(rootEl);
+    console.log('[AppInit] Rendering App...');
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+    console.log('[AppInit] Render called successfully');
 
-  // Hide splash after first paint in native shells
-  requestAnimationFrame(() => {
-    SplashScreen.hide().catch(() => {
-      /* ignore on web */
+    // Hide splash after first paint in native shells
+    requestAnimationFrame(() => {
+      SplashScreen.hide().catch(() => {
+        /* ignore on web */
+      });
     });
-  });
+  } catch (e) {
+    const err = e as Error;
+    logEarly(`[RENDER CRASH]\n${err.message}\n${err.stack || ''}`);
+  }
+} else {
+  logEarly('[FATAL] No root element found!');
 }
