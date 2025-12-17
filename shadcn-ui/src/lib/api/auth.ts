@@ -17,6 +17,7 @@ export const authApi = {
       email: data.email,
       password: data.password,
       name: data.full_name || data.email.split('@')[0],
+      full_name: data.full_name,
     });
     return response.data;
   },
