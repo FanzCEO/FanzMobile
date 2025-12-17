@@ -7,7 +7,8 @@ const useLiveReload = process.env.USE_LIVE_RELOAD === 'true';
 const liveReloadUrl = process.env.LIVE_RELOAD_URL || 'http://localhost:5173';
 
 const config: CapacitorConfig = {
-  appId: 'com.fanz.rentcrm',
+  // Use a unique bundle ID for development - change this to your own identifier
+  appId: 'com.wyattcole.wickedcrm.dev',
   appName: 'WickedCRM',
   webDir: 'dist',
   // Only use server.url for live reload during development
