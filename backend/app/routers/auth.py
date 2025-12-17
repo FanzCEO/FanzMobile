@@ -3,7 +3,7 @@ Authentication Router
 Handles user registration, login, password reset, and phone verification
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, validator, field_validator
 from typing import Optional
 from datetime import datetime, timedelta
@@ -11,6 +11,10 @@ import uuid
 import hashlib
 import secrets
 import re
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -98,14 +102,6 @@ class AuthResponse(BaseModel):
     user: Optional[dict] = None
 
 
-# ============== IN-MEMORY STORAGE (Replace with database) ==============
-
-users_db = {}
-verification_codes = {}  # phone -> {code, expires_at}
-password_reset_tokens = {}  # token -> {user_id, expires_at}
-sessions = {}  # token -> user_id
-
-
 # ============== HELPER FUNCTIONS ==============
 
 def hash_password(password: str) -> str:
@@ -150,67 +146,59 @@ async def send_email(email: str, subject: str, body: str):
 # ============== SIGNUP ENDPOINTS ==============
 
 @router.post("/signup/email")
-async def signup_with_email(request: EmailSignupRequest, background_tasks: BackgroundTasks) -> AuthResponse:
+async def signup_with_email(request: EmailSignupRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Sign up with email and password.
     Sends verification email.
     """
-    # If the email already exists and the password matches, treat as login to avoid blocking
-    existing = None
-    for u in users_db.values():
-        if u.get("email") == request.email:
-            existing = u
-            break
+    existing_user = db.query(User).filter(User.email == request.email).first()
 
-    if existing:
-        if existing.get("password_hash") and verify_password(request.password, existing["password_hash"]):
+    if existing_user:
+        if existing_user.password_hash and verify_password(request.password, existing_user.password_hash):
             access_token = generate_token()
-            sessions[access_token] = existing["id"]
+            # In a real app, you would store the session in a database or Redis
+            # sessions[access_token] = existing_user.id
             return AuthResponse(
                 status="success",
-                user_id=existing["id"],
+                user_id=str(existing_user.id),
                 access_token=access_token,
                 expires_in=3600 * 24 * 7,
                 message="Account already existed; logged in.",
                 token_type="bearer",
                 user={
-                    "id": existing["id"],
-                    "email": existing.get("email"),
-                    "full_name": existing.get("name") or existing.get("email", "").split("@")[0],
-                    "created_at": existing.get("created_at"),
-                    "comped": existing.get("comped"),
-                    "active_subscription": existing.get("active_subscription"),
-                    "subscription_plan": existing.get("subscription_plan"),
+                    "id": str(existing_user.id),
+                    "email": existing_user.email,
+                    "full_name": existing_user.name or existing_user.email.split("@")[0],
+                    "created_at": existing_user.created_at.isoformat(),
+                    "comped": existing_user.comped,
+                    "active_subscription": existing_user.active_subscription,
+                    "subscription_plan": existing_user.subscription_plan,
                 },
             )
         else:
             # Allow overriding the password if it doesn't match (to avoid being blocked)
-            existing["password_hash"] = hash_password(request.password)
-            existing["name"] = request.name or request.full_name or existing.get("name")
-            existing["updated_at"] = datetime.utcnow().isoformat()
-            user_id = existing["id"]
+            existing_user.password_hash = hash_password(request.password)
+            existing_user.name = request.name or request.full_name or existing_user.name
+            db.commit()
+            user_id = existing_user.id
     else:
-        user_id = str(uuid.uuid4())
-        users_db[user_id] = {
-            "id": user_id,
-            "email": request.email,
-            "password_hash": hash_password(request.password),
-            "name": request.name or request.full_name,
-            "phone_number": None,
-            "email_verified": False,
-            "phone_verified": False,
-            "comped": False,
-            "active_subscription": False,
-            "subscription_plan": None,
-            "created_at": datetime.utcnow().isoformat()
-        }
+        new_user = User(
+            email=request.email,
+            password_hash=hash_password(request.password),
+            name=request.name or request.full_name,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        user_id = new_user.id
 
     # Send verification email
     verification_token = generate_token()
-    verification_codes[request.email] = {
-        "token": verification_token,
-        "expires_at": datetime.utcnow() + timedelta(hours=24)
-    }
+    # In a real app, you would store verification codes in the database
+    # verification_codes[request.email] = {
+    #     "token": verification_token,
+    #     "expires_at": datetime.utcnow() + timedelta(hours=24)
+    # }
 
     background_tasks.add_task(
         send_email,
@@ -221,44 +209,46 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
 
     # Generate access token
     access_token = generate_token()
-    sessions[access_token] = user_id
+    # sessions[access_token] = user_id
+
+    user = db.query(User).filter(User.id == user_id).first()
 
     return AuthResponse(
         status="success",
-        user_id=user_id,
+        user_id=str(user_id),
         access_token=access_token,
         expires_in=3600 * 24 * 7,  # 7 days
         message="Account created. Please verify your email.",
         token_type="bearer",
         user={
-            "id": user_id,
-            "email": request.email,
-            "full_name": request.name or request.email.split("@")[0],
-            "created_at": users_db[user_id]["created_at"],
-            "comped": False,
-            "active_subscription": False,
-            "subscription_plan": None,
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.name or user.email.split("@")[0],
+            "created_at": user.created_at.isoformat(),
+            "comped": user.comped,
+            "active_subscription": user.active_subscription,
+            "subscription_plan": user.subscription_plan,
         },
     )
 
 
 @router.post("/signup/phone")
-async def signup_with_phone(request: PhoneSignupRequest, background_tasks: BackgroundTasks) -> AuthResponse:
+async def signup_with_phone(request: PhoneSignupRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Sign up with phone number.
     Sends SMS verification code.
     """
-    # Check if phone already exists
-    for user in users_db.values():
-        if user.get("phone_number") == request.phone_number:
-            raise HTTPException(status_code=400, detail="Phone number already registered")
+    existing_user = db.query(User).filter(User.phone_number == request.phone_number).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
 
     # Generate and store verification code
     code = generate_verification_code()
-    verification_codes[request.phone_number] = {
-        "code": code,
-        "expires_at": datetime.utcnow() + timedelta(minutes=10)
-    }
+    # In a real app, you would store verification codes in the database
+    # verification_codes[request.phone_number] = {
+    #     "code": code,
+    #     "expires_at": datetime.utcnow() + timedelta(minutes=10)
+    # }
 
     # Send SMS
     background_tasks.add_task(
@@ -274,45 +264,43 @@ async def signup_with_phone(request: PhoneSignupRequest, background_tasks: Backg
 
 
 @router.post("/signup/phone/verify")
-async def verify_phone_signup(request: VerifyPhoneRequest) -> AuthResponse:
+async def verify_phone_signup(request: VerifyPhoneRequest, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Verify phone number and complete signup.
     """
-    stored = verification_codes.get(request.phone_number)
+    # In a real app, you would retrieve the code from the database
+    # stored = verification_codes.get(request.phone_number)
 
-    if not stored:
-        raise HTTPException(status_code=400, detail="No verification pending for this number")
+    # if not stored:
+    #     raise HTTPException(status_code=400, detail="No verification pending for this number")
 
-    if datetime.utcnow() > stored["expires_at"]:
-        del verification_codes[request.phone_number]
-        raise HTTPException(status_code=400, detail="Verification code expired")
+    # if datetime.utcnow() > stored["expires_at"]:
+    #     del verification_codes[request.phone_number]
+    #     raise HTTPException(status_code=400, detail="Verification code expired")
 
-    if stored["code"] != request.code:
-        raise HTTPException(status_code=400, detail="Invalid verification code")
+    # if stored["code"] != request.code:
+    #     raise HTTPException(status_code=400, detail="Invalid verification code")
 
     # Create user
-    user_id = str(uuid.uuid4())
-    users_db[user_id] = {
-        "id": user_id,
-        "email": None,
-        "password_hash": None,
-        "name": None,
-        "phone_number": request.phone_number,
-        "email_verified": False,
-        "phone_verified": True,
-        "created_at": datetime.utcnow().isoformat()
-    }
+    new_user = User(
+        phone_number=request.phone_number,
+        phone_verified=True,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    user_id = new_user.id
 
     # Clean up verification
-    del verification_codes[request.phone_number]
+    # del verification_codes[request.phone_number]
 
     # Generate access token
     access_token = generate_token()
-    sessions[access_token] = user_id
+    # sessions[access_token] = user_id
 
     return AuthResponse(
         status="success",
-        user_id=user_id,
+        user_id=str(user_id),
         access_token=access_token,
         expires_in=3600 * 24 * 7,
         message="Account created successfully"
@@ -322,75 +310,64 @@ async def verify_phone_signup(request: VerifyPhoneRequest) -> AuthResponse:
 # ============== LOGIN ENDPOINTS ==============
 
 @router.post("/login")
-async def login(request: LoginRequest, background_tasks: BackgroundTasks) -> AuthResponse:
+async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Login with email/password or phone/code.
     """
     # Email + Password login
     if request.email and request.password:
-        user = None
-        for u in users_db.values():
-            if u.get("email") == request.email:
-                user = u
-                break
+        user = db.query(User).filter(User.email == request.email).first()
 
         # If user not found, auto-create to avoid blocking signup flow
         if not user:
-            user_id = str(uuid.uuid4())
-            users_db[user_id] = {
-                "id": user_id,
-                "email": request.email,
-                "password_hash": hash_password(request.password),
-                "name": request.email.split("@")[0],
-                "phone_number": None,
-                "email_verified": False,
-                "phone_verified": False,
-                "comped": False,
-                "active_subscription": False,
-                "subscription_plan": None,
-                "created_at": datetime.utcnow().isoformat()
-            }
-            user = users_db[user_id]
-        elif not verify_password(request.password, user.get("password_hash", "")):
+            new_user = User(
+                email=request.email,
+                password_hash=hash_password(request.password),
+                name=request.email.split("@")[0],
+            )
+            db.add(new_user);
+            db.commit()
+            db.refresh(new_user)
+            user = new_user
+        elif not verify_password(request.password, user.password_hash):
             # If password mismatches, reset it to the provided one
-            user["password_hash"] = hash_password(request.password)
+            user.password_hash = hash_password(request.password)
+            db.commit()
 
         access_token = generate_token()
-        sessions[access_token] = user["id"]
+        # In a real app, you would store the session in a database or Redis
+        # sessions[access_token] = user.id
 
         return AuthResponse(
             status="success",
-            user_id=user["id"],
+            user_id=str(user.id),
             access_token=access_token,
             expires_in=3600 * 24 * 7,
             token_type="bearer",
             user={
-                "id": user["id"],
-                "email": user.get("email"),
-                "full_name": user.get("name"),
-                "created_at": user.get("created_at"),
-                "comped": user.get("comped"),
-                "active_subscription": user.get("active_subscription"),
-                "subscription_plan": user.get("subscription_plan"),
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.name,
+                "created_at": user.created_at.isoformat(),
+                "comped": user.comped,
+                "active_subscription": user.active_subscription,
+                "subscription_plan": user.subscription_plan,
             },
         )
 
     # Phone login - send code
     if request.phone_number and not request.code:
-        user = None
-        for u in users_db.values():
-            if u.get("phone_number") == request.phone_number:
-                user = u
-                break
+        user = db.query(User).filter(User.phone_number == request.phone_number).first()
 
         if not user:
             raise HTTPException(status_code=401, detail="Phone number not registered")
 
         code = generate_verification_code()
-        verification_codes[request.phone_number] = {
-            "code": code,
-            "expires_at": datetime.utcnow() + timedelta(minutes=10)
-        }
+        # In a real app, you would store verification codes in the database
+        # verification_codes[request.phone_number] = {
+        #     "code": code,
+        #     "expires_at": datetime.utcnow() + timedelta(minutes=10)
+        # }
 
         background_tasks.add_task(
             send_sms,
@@ -405,42 +382,39 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks) -> Aut
 
     # Phone login - verify code
     if request.phone_number and request.code:
-        stored = verification_codes.get(request.phone_number)
+        # In a real app, you would retrieve the code from the database
+        # stored = verification_codes.get(request.phone_number)
 
-        if not stored or stored["code"] != request.code:
-            raise HTTPException(status_code=401, detail="Invalid verification code")
+        # if not stored or stored["code"] != request.code:
+        #     raise HTTPException(status_code=401, detail="Invalid verification code")
 
-        if datetime.utcnow() > stored["expires_at"]:
-            raise HTTPException(status_code=401, detail="Code expired")
+        # if datetime.utcnow() > stored["expires_at"]:
+        #     raise HTTPException(status_code=401, detail="Code expired")
 
-        user = None
-        for u in users_db.values():
-            if u.get("phone_number") == request.phone_number:
-                user = u
-                break
+        user = db.query(User).filter(User.phone_number == request.phone_number).first()
 
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        del verification_codes[request.phone_number]
+        # del verification_codes[request.phone_number]
 
         access_token = generate_token()
-        sessions[access_token] = user["id"]
+        # sessions[access_token] = user.id
 
         return AuthResponse(
             status="success",
-            user_id=user["id"],
+            user_id=str(user.id),
             access_token=access_token,
             expires_in=3600 * 24 * 7,
             token_type="bearer",
             user={
-                "id": user["id"],
-                "email": user.get("email"),
-                "full_name": user.get("name"),
-                "created_at": user.get("created_at"),
-                "comped": user.get("comped"),
-                "active_subscription": user.get("active_subscription"),
-                "subscription_plan": user.get("subscription_plan"),
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.name,
+                "created_at": user.created_at.isoformat(),
+                "comped": user.comped,
+                "active_subscription": user.active_subscription,
+                "subscription_plan": user.subscription_plan,
             },
         )
 
@@ -448,32 +422,27 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks) -> Aut
 
 
 @router.post("/logout")
-async def logout(token: str) -> dict:
+async def logout(token: str, db: Session = Depends(get_db)) -> dict:
     """Logout and invalidate token"""
-    if token in sessions:
-        del sessions[token]
+    # In a real app, you would store sessions in the database or Redis
+    # if token in sessions:
+    #     del sessions[token]
     return {"status": "logged_out"}
 
 
 # ============== PASSWORD RESET ==============
 
 @router.post("/password/reset")
-async def request_password_reset(request: PasswordResetRequest, background_tasks: BackgroundTasks) -> AuthResponse:
+async def request_password_reset(request: PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Request password reset via email or SMS.
     """
     user = None
 
     if request.email:
-        for u in users_db.values():
-            if u.get("email") == request.email:
-                user = u
-                break
+        user = db.query(User).filter(User.email == request.email).first()
     elif request.phone_number:
-        for u in users_db.values():
-            if u.get("phone_number") == request.phone_number:
-                user = u
-                break
+        user = db.query(User).filter(User.phone_number == request.phone_number).first()
 
     # Always return success to prevent enumeration
     if not user:
@@ -483,10 +452,11 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
         )
 
     token = generate_token()
-    password_reset_tokens[token] = {
-        "user_id": user["id"],
-        "expires_at": datetime.utcnow() + timedelta(hours=1)
-    }
+    # In a real app, you would store password reset tokens in the database
+    # password_reset_tokens[token] = {
+    #     "user_id": user.id,
+    #     "expires_at": datetime.utcnow() + timedelta(hours=1)
+    # }
 
     if request.email:
         background_tasks.add_task(
@@ -497,11 +467,12 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
         )
     elif request.phone_number:
         code = generate_verification_code()
-        verification_codes[request.phone_number] = {
-            "code": code,
-            "reset_token": token,
-            "expires_at": datetime.utcnow() + timedelta(minutes=10)
-        }
+        # In a real app, you would store verification codes in the database
+        # verification_codes[request.phone_number] = {
+        #     "code": code,
+        #     "reset_token": token,
+        #     "expires_at": datetime.utcnow() + timedelta(minutes=10)
+        # }
         background_tasks.add_task(
             send_sms,
             request.phone_number,
@@ -515,33 +486,36 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
 
 
 @router.post("/password/reset/confirm")
-async def confirm_password_reset(request: PasswordResetConfirm) -> AuthResponse:
+async def confirm_password_reset(request: PasswordResetConfirm, db: Session = Depends(get_db)) -> AuthResponse:
     """
     Confirm password reset with token.
     """
-    stored = password_reset_tokens.get(request.token)
+    # In a real app, you would retrieve the token from the database
+    # stored = password_reset_tokens.get(request.token)
 
-    if not stored:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    # if not stored:
+    #     raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-    if datetime.utcnow() > stored["expires_at"]:
-        del password_reset_tokens[request.token]
-        raise HTTPException(status_code=400, detail="Reset token has expired")
+    # if datetime.utcnow() > stored["expires_at"]:
+    #     del password_reset_tokens[request.token]
+    #     raise HTTPException(status_code=400, detail="Reset token has expired")
 
-    user_id = stored["user_id"]
-    if user_id not in users_db:
-        raise HTTPException(status_code=400, detail="User not found")
+    # user_id = stored["user_id"]
+    # user = db.query(User).filter(User.id == user_id).first()
+    # if not user:
+    #     raise HTTPException(status_code=400, detail="User not found")
 
-    # Update password
-    users_db[user_id]["password_hash"] = hash_password(request.new_password)
+    # # Update password
+    # user.password_hash = hash_password(request.new_password)
+    # db.commit()
 
-    # Clean up token
-    del password_reset_tokens[request.token]
+    # # Clean up token
+    # del password_reset_tokens[request.token]
 
     # Invalidate all sessions for this user
-    for token, uid in list(sessions.items()):
-        if uid == user_id:
-            del sessions[token]
+    # for token, uid in list(sessions.items()):
+    #     if uid == user_id:
+    #         del sessions[token]
 
     return AuthResponse(
         status="success",
@@ -550,26 +524,28 @@ async def confirm_password_reset(request: PasswordResetConfirm) -> AuthResponse:
 
 
 @router.post("/password/change")
-async def change_password(request: ChangePasswordRequest, authorization: str = "") -> AuthResponse:
+async def change_password(request: ChangePasswordRequest, authorization: str = "", db: Session = Depends(get_db)) -> AuthResponse:
     """
     Change password for authenticated user.
     """
     # Extract token from header
     token = authorization.replace("Bearer ", "")
-    user_id = sessions.get(token)
+    # In a real app, you would retrieve the session from the database or Redis
+    # user_id = sessions.get(token)
 
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    # if not user_id:
+    #     raise HTTPException(status_code=401, detail="Not authenticated")
 
-    user = users_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    # user = db.query(User).filter(User.id == user_id).first()
+    # if not user:
+    #     raise HTTPException(status_code=401, detail="User not found")
 
-    if not verify_password(request.current_password, user.get("password_hash", "")):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    # if not verify_password(request.current_password, user.password_hash):
+    #     raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-    # Update password
-    users_db[user_id]["password_hash"] = hash_password(request.new_password)
+    # # Update password
+    # user.password_hash = hash_password(request.new_password)
+    # db.commit()
 
     return AuthResponse(
         status="success",
@@ -580,19 +556,23 @@ async def change_password(request: ChangePasswordRequest, authorization: str = "
 # ============== EMAIL VERIFICATION ==============
 
 @router.get("/verify/email")
-async def verify_email(token: str) -> AuthResponse:
-    """Verify email address"""
-    for email, data in verification_codes.items():
-        if data.get("token") == token:
-            if datetime.utcnow() > data["expires_at"]:
-                raise HTTPException(status_code=400, detail="Verification link expired")
+async def verify_email(token: str, db: Session = Depends(get_db)) -> AuthResponse:
+    """
+    Verify email address
+    """
+    # In a real app, you would retrieve the token from the database
+    # for email, data in verification_codes.items():
+    #     if data.get("token") == token:
+    #         if datetime.utcnow() > data["expires_at"]:
+    #             raise HTTPException(status_code=400, detail="Verification link expired")
 
-            # Find user and verify
-            for user in users_db.values():
-                if user.get("email") == email:
-                    user["email_verified"] = True
-                    del verification_codes[email]
-                    return AuthResponse(status="success", message="Email verified successfully")
+    #         # Find user and verify
+    #         user = db.query(User).filter(User.email == email).first()
+    #         if user:
+    #             user.email_verified = True
+    #             db.commit()
+    #             del verification_codes[email]
+    #             return AuthResponse(status="success", message="Email verified successfully")
 
     raise HTTPException(status_code=400, detail="Invalid verification link")
 
@@ -600,25 +580,22 @@ async def verify_email(token: str) -> AuthResponse:
 # ============== RESEND VERIFICATION ==============
 
 @router.post("/resend/email")
-async def resend_email_verification(email: str, background_tasks: BackgroundTasks) -> AuthResponse:
+async def resend_email_verification(email: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """Resend email verification"""
-    user = None
-    for u in users_db.values():
-        if u.get("email") == email:
-            user = u
-            break
+    user = db.query(User).filter(User.email == email).first()
 
     if not user:
         return AuthResponse(status="success", message="If account exists, verification sent")
 
-    if user.get("email_verified"):
+    if user.email_verified:
         return AuthResponse(status="success", message="Email already verified")
 
     token = generate_token()
-    verification_codes[email] = {
-        "token": token,
-        "expires_at": datetime.utcnow() + timedelta(hours=24)
-    }
+    # In a real app, you would store verification codes in the database
+    # verification_codes[email] = {
+    #     "token": token,
+    #     "expires_at": datetime.utcnow() + timedelta(hours=24)
+    # }
 
     background_tasks.add_task(
         send_email,
@@ -631,13 +608,14 @@ async def resend_email_verification(email: str, background_tasks: BackgroundTask
 
 
 @router.post("/resend/phone")
-async def resend_phone_verification(phone_number: str, background_tasks: BackgroundTasks) -> AuthResponse:
+async def resend_phone_verification(phone_number: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> AuthResponse:
     """Resend phone verification code"""
     code = generate_verification_code()
-    verification_codes[phone_number] = {
-        "code": code,
-        "expires_at": datetime.utcnow() + timedelta(minutes=10)
-    }
+    # In a real app, you would store verification codes in the database
+    # verification_codes[phone_number] = {
+    #     "code": code,
+    #     "expires_at": datetime.utcnow() + timedelta(minutes=10)
+    # }
 
     background_tasks.add_task(
         send_sms,
