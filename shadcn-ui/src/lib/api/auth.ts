@@ -8,8 +8,8 @@ export const authApi = {
     const formData = new URLSearchParams();
     formData.append('username', data.email);
     formData.append('password', data.password);
-    
-    const response = await apiClient.post<AuthResponse>('/auth/login', formData, {
+
+    const response = await apiClient.post<AuthResponse>('/api/auth/login', formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
@@ -18,7 +18,11 @@ export const authApi = {
   },
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    const response = await apiClient.post<AuthResponse>('/api/auth/signup/email', {
+      email: data.email,
+      password: data.password,
+      name: data.name,
+    });
     return response.data;
   },
 
