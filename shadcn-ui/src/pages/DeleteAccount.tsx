@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

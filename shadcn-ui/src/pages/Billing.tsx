@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { billingApi, type Plan, type BillingPolicy } from '@/lib/api/billing';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/lib/hooks/useAuth';
 
 export default function Billing() {

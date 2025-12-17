@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { formatRelativeTime } from '@/lib/utils/date';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 export default function Contacts() {
   const queryClient = useQueryClient();

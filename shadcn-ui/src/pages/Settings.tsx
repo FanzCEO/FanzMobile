@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAccessibility } from '@/contexts/AccessibilityContext';
 import { billingApi, FeeConfig } from '@/lib/api/billing';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
 export default function Settings() {

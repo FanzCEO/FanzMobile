@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime, formatDate } from '@/lib/utils/date';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 export default function Calendar() {
   const queryClient = useQueryClient();

@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Shield, Users, Plug, Sliders, CreditCard, Save } from 'lucide-react';
 import { adminApi, type PaymentProviderConfig } from '@/lib/api/admin';
 

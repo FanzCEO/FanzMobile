@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { authApi, mapAuthResponseToUser } from '@/lib/api/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { AxiosError } from 'axios';
 
 export default function Register() {

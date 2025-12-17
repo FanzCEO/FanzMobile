@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { threadsApi } from '@/lib/api/threads';
 import type { Thread, ThreadEvent } from '@/types/thread';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useRealtime } from '@/lib/realtime';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { livekitApi } from '@/lib/livekit';

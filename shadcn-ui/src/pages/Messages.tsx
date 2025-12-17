@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/utils/date';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type { MessageChannel, MessageDirection } from '@/types/message';
 
 export default function Messages() {
