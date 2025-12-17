@@ -31,7 +31,8 @@ export default function Register() {
       navigate('/');
     } catch (error) {
       const axiosError = error as AxiosError<{ detail: string }>;
-      toast.error(axiosError.response?.data?.detail || 'Registration failed');
+      const errorMessage = axiosError.response?.data ? JSON.stringify(axiosError.response.data) : 'Registration failed';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
