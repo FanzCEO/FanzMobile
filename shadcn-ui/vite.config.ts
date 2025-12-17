@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import { viteSourceLocator } from '@metagptx/vite-plugin-source-locator';
 
+// Backend API server - can be overridden with VITE_API_PROXY_TARGET env var
+// For Capacitor mobile dev on real devices, set this to your machine's LAN IP
+// e.g., VITE_API_PROXY_TARGET=http://192.168.5.240:8000
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000';
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -16,10 +21,12 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === 'development' ? true : 'hidden',
   },
   server: {
+    // Bind to all interfaces so mobile devices can connect
+    host: true,
     watch: { usePolling: true, interval: 800 /* 300~1500 */ },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },
