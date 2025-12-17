@@ -53,6 +53,12 @@
         console.error('Early error:', merged);
         window.__last_error__ = merged;
         renderOverlay('App crashed', merged);
+        try {
+          document.title = 'Crash: ' + msg;
+          alert(merged);
+        } catch (_) {
+          /* ignore */
+        }
       }
 
       window.addEventListener('error', function (event) {
