@@ -62,6 +62,7 @@
       }
 
       window.addEventListener('error', function (event) {
+        console.log('error event', event.filename, event.lineno, event.colno, event.message);
         captureError({
           message: event.message,
           stack: event.error && event.error.stack,
@@ -73,6 +74,7 @@
 
       window.addEventListener('unhandledrejection', function (event) {
         var reason = event.reason || {};
+        console.log('unhandled rejection', reason);
         captureError({
           message: reason.message || String(reason),
           stack: reason.stack,
