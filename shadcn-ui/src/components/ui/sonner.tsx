@@ -95,6 +95,7 @@ const toast = Object.assign(
     info: (message: unknown) => sonnerToast.info(toToastText(message)),
     warning: (message: unknown) => sonnerToast.warning(toToastText(message)),
     loading: (message: unknown) => sonnerToast.loading(toToastText(message)),
+    message: (message: unknown) => sonnerToast.message(toToastText(message)),
     promise: sonnerToast.promise,
     dismiss: sonnerToast.dismiss,
     custom: sonnerToast.custom,
@@ -102,4 +103,4 @@ const toast = Object.assign(
 );
 
 
-export { Toaster, toast };
+export { Toaster, toast, toToastText };

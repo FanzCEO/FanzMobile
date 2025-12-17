@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { authApi, mapAuthResponseToUser } from '@/lib/api/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { toast } from '@/components/ui/sonner';
-import { AxiosError } from 'axios';
+import { toast, toToastText } from '@/components/ui/sonner';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -30,16 +29,10 @@ export default function Register() {
       toast.success('Account created successfully!');
       navigate('/');
     } catch (error) {
-      const axiosError = error as AxiosError<{ detail: string }>;
-      let errorMessage = 'Registration failed (unknown error)';
-      if (axiosError.response?.data) {
-        errorMessage = JSON.stringify(axiosError.response.data);
-      } else if (axiosError.message) {
-        errorMessage = axiosError.message;
-      } else {
-        errorMessage = String(error); // Fallback to stringifying the generic error object
-      }
-      toast.error(errorMessage);
+      // Use toToastText to safely extract error message from Axios/FastAPI responses
+      const axiosError = error as { response?: { data?: unknown }; message?: string };
+      const errorData = axiosError.response?.data ?? axiosError.message ?? error;
+      toast.error(toToastText(errorData) || 'Registration failed');
     } finally {
       setLoading(false);
     }

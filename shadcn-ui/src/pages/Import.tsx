@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/sonner';
+import { toast, toToastText } from '@/components/ui/sonner';
 import { contactsApi } from '@/lib/api/contacts';
 import { messagesApi } from '@/lib/api/messages';
 import { apiClient } from '@/lib/api/client';
@@ -456,12 +456,15 @@ export default function Import() {
       toast.success(`Imported ${importedContacts} Telegram contacts and ${importedMessages} messages`);
     } catch (error) {
       console.error('Telegram import failed:', error);
-      toast.error((error as Error).message || 'Failed to import from Telegram');
+      const axiosError = error as { response?: { data?: unknown }; message?: string };
+      const errorData = axiosError.response?.data ?? axiosError.message ?? error;
+      const errorMsg = toToastText(errorData) || 'Failed to import from Telegram';
+      toast.error(errorMsg);
       setResult({
         contacts: 0,
         messages: 0,
         duplicates: 0,
-        errors: [(error as Error).message],
+        errors: [errorMsg],
       });
     } finally {
       setImporting(false);

@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from '@/components/ui/sonner';
+import { toast, toToastText } from '@/components/ui/sonner';
 
 interface IntegrationConfig {
   provider: IntegrationProvider;
@@ -254,16 +254,10 @@ export default function Integrations() {
       setSendDialog(null);
       setSendData({ to: '', body: '' });
     } catch (error: unknown) {
-      const detail =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        (error as { response?: { data?: { detail?: string } } }).response
-          ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : error instanceof Error
-            ? error.message
-            : null;
-      toast.error(detail || 'Failed to send message');
+      // Use toToastText to safely extract error message from Axios/FastAPI responses
+      const axiosError = error as { response?: { data?: unknown }; message?: string };
+      const errorData = axiosError.response?.data ?? axiosError.message ?? error;
+      toast.error(toToastText(errorData) || 'Failed to send message');
     }
   };
 

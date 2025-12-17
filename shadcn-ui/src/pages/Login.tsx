@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { authApi, mapAuthResponseToUser } from '@/lib/api/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { toast } from '@/components/ui/sonner';
-import { AxiosError } from 'axios';
+import { toast, toToastText } from '@/components/ui/sonner';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -29,8 +28,10 @@ export default function Login() {
       toast.success('Login successful!');
       navigate('/');
     } catch (error) {
-      const axiosError = error as AxiosError<{ detail: string }>;
-      toast.error(axiosError.response?.data?.detail || 'Login failed');
+      // Use toToastText to safely extract error message from Axios/FastAPI responses
+      const axiosError = error as { response?: { data?: unknown }; message?: string };
+      const errorData = axiosError.response?.data ?? axiosError.message ?? error;
+      toast.error(toToastText(errorData) || 'Login failed');
     } finally {
       setLoading(false);
     }
