@@ -1,19 +1,19 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Set USE_LIVE_RELOAD=true for development with live reload
+const useLiveReload = process.env.USE_LIVE_RELOAD === 'true';
+
 const config: CapacitorConfig = {
   appId: 'com.fanz.rentcrm',
   appName: 'WickedCRM',
   webDir: 'dist',
-  server: {
-    url: 'http://localhost:5173',
-    cleartext: true,
-    proxy: {
-      '/': {
-        target: 'http://192.168.5.240:8000',
-        changeOrigin: true,
-      },
+  // Only use server.url for live reload during development
+  ...(useLiveReload && {
+    server: {
+      url: 'http://localhost:5173',
+      cleartext: true,
     },
-  },
+  }),
   plugins: {
     SplashScreen: {
       launchShowDuration: 0,
