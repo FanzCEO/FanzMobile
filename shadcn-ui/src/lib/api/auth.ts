@@ -13,10 +13,9 @@ export const authApi = {
   },
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/api/auth/signup/email', {
+    const response = await apiClient.post<AuthResponse>('/auth/register', {
       email: data.email,
       password: data.password,
-      name: data.full_name || data.email.split('@')[0],
       full_name: data.full_name,
     });
     return response.data;
