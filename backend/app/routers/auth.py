@@ -21,6 +21,7 @@ class EmailSignupRequest(BaseModel):
     email: str
     password: str
     name: Optional[str] = None
+    full_name: Optional[str] = None
 
     @field_validator('email')
     @classmethod
@@ -33,8 +34,8 @@ class EmailSignupRequest(BaseModel):
     @classmethod
     def password_strength(cls, v):
         # Keep signup lenient for quick onboarding
-        if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
+        if len(v) < 4:
+            raise ValueError('Password must be at least 4 characters')
         return v
 
 
