@@ -5,9 +5,14 @@ const config: CapacitorConfig = {
   appName: 'WickedCRM',
   webDir: 'dist',
   server: {
-    // Use bundled assets for App Store build; enable only if loading remote during dev
-    url: 'https://rent.fanz.website',
-    cleartext: false
+    url: 'http://localhost:5173',
+    cleartext: true,
+    proxy: {
+      '/': {
+        target: 'http://192.168.5.240:8000',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: {
     SplashScreen: {
