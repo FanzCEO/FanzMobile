@@ -21,6 +21,11 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   access_token: string;
-  token_type: string;
-  user: User;
+  token_type?: string;
+  user?: User;
+  // Backend fallback fields
+  status?: string;
+  user_id?: string;
+  expires_in?: number;
+  message?: string;
 }

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { authApi } from '@/lib/api/auth';
+import { authApi, mapAuthResponseToUser } from '@/lib/api/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
@@ -25,7 +25,8 @@ export default function Register() {
 
     try {
       const response = await authApi.register(formData);
-      setAuth(response.user, response.access_token);
+      const { user, token } = mapAuthResponseToUser(response, formData.email);
+      setAuth(user, token);
       toast.success('Account created successfully!');
       navigate('/');
     } catch (error) {
