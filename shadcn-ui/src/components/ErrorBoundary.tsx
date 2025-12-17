@@ -7,12 +7,40 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorInfo: string;
+}
+
+// Helper to serialize any error type
+function serializeError(err: unknown): string {
+  if (err instanceof Error) {
+    return `${err.name}: ${err.message}\n${err.stack || ''}`;
+  }
+  if (typeof err === 'object' && err !== null) {
+    try {
+      // Try to get constructor name
+      const name = (err as Record<string, unknown>).constructor?.name || 'Object';
+      // Try JSON stringify
+      const json = JSON.stringify(err, null, 2);
+      if (json === '{}') {
+        // Empty object - try to get own properties
+        const props = Object.getOwnPropertyNames(err)
+          .map((k) => `${k}: ${String((err as Record<string, unknown>)[k])}`)
+          .join(', ');
+        return `[${name}] { ${props || 'empty'} }`;
+      }
+      return `[${name}] ${json}`;
+    } catch {
+      return `[Object] ${String(err)}`;
+    }
+  }
+  return String(err);
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
+    errorInfo: '',
   };
 
   private unsubscribe?: () => void;
@@ -20,11 +48,19 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidMount() {
     const handleGlobalError = (event: ErrorEvent) => {
       // Capture unexpected runtime errors (outside React render)
-      this.setState({ hasError: true, error: event.error || new Error(event.message) });
+      const errMsg = serializeError(event.error || event.message);
+      console.error('[ErrorBoundary] Global error:', errMsg);
+      this.setState({
+        hasError: true,
+        error: event.error || new Error(event.message),
+        errorInfo: errMsg,
+      });
     };
     const handleRejection = (event: PromiseRejectionEvent) => {
+      const errMsg = serializeError(event.reason);
+      console.error('[ErrorBoundary] Unhandled rejection:', errMsg);
       const err = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-      this.setState({ hasError: true, error: err });
+      this.setState({ hasError: true, error: err, errorInfo: errMsg });
     };
     window.addEventListener('error', handleGlobalError);
     window.addEventListener('unhandledrejection', handleRejection);
@@ -38,26 +74,75 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.unsubscribe) this.unsubscribe();
   }
 
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  public static getDerivedStateFromError(error: unknown): State {
+    const errMsg = serializeError(error);
+    console.error('[ErrorBoundary] getDerivedStateFromError:', errMsg);
+    return {
+      hasError: true,
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorInfo: errMsg,
+    };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+  public componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+    const errMsg = serializeError(error);
+    console.error('[ErrorBoundary] componentDidCatch:', errMsg, errorInfo);
+    this.setState((prev) => ({
+      ...prev,
+      errorInfo: `${errMsg}\n\nComponent Stack:${errorInfo.componentStack}`,
+    }));
   }
 
   public render() {
     if (this.state.hasError) {
+      const displayError =
+        this.state.errorInfo ||
+        this.state.error?.stack ||
+        this.state.error?.message ||
+        'Unknown error';
+
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-black text-white">
-          <div className="max-w-lg text-center">
-            <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
-            <pre className="text-left bg-gray-900 p-4 rounded-lg overflow-auto text-sm mb-4">
-              {this.state.error?.stack || this.state.error?.message}
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            backgroundColor: '#000',
+            color: '#fff',
+          }}
+        >
+          <div style={{ maxWidth: '600px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
+              Something went wrong
+            </h1>
+            <pre
+              style={{
+                textAlign: 'left',
+                backgroundColor: '#1a1a1a',
+                padding: '16px',
+                borderRadius: '8px',
+                overflow: 'auto',
+                fontSize: '12px',
+                marginBottom: '16px',
+                maxHeight: '400px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {displayError}
             </pre>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#2563eb',
+                borderRadius: '6px',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
             >
               Reload Page
             </button>
