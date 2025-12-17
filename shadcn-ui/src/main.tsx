@@ -37,6 +37,34 @@ function logEarly(msg: string, append = false) {
   console.error('[EarlyError]', msg);
 }
 
+// Helper to serialize any error type safely
+function serializeError(err: unknown): string {
+  if (err instanceof Error) {
+    return `${err.name}: ${err.message}\n${err.stack || ''}`;
+  }
+  if (typeof err === 'object' && err !== null) {
+    try {
+      const obj = err as Record<string, unknown>;
+      // Try to extract common error properties
+      if ('message' in obj && typeof obj.message === 'string') {
+        return `${obj.message}\n${obj.stack || ''}`;
+      }
+      // Try JSON stringify
+      const json = JSON.stringify(err, null, 2);
+      if (json === '{}') {
+        const props = Object.getOwnPropertyNames(err)
+          .map((k) => `${k}: ${String(obj[k])}`)
+          .join(', ');
+        return `[Object] { ${props || 'empty'} }`;
+      }
+      return json;
+    } catch {
+      return `[Object] ${String(err)}`;
+    }
+  }
+  return String(err);
+}
+
 // Log environment info for debugging
 const envInfo = `Platform: ${navigator.userAgent}\nURL: ${window.location.href}\nAPI: ${import.meta.env.VITE_API_BASE_URL || 'localhost:8000 (default)'}`;
 console.log('[AppInit]', envInfo);
@@ -80,8 +108,7 @@ if (rootEl) {
       });
     });
   } catch (e) {
-    const err = e as Error;
-    logEarly(`[RENDER CRASH]\n${err.message}\n${err.stack || ''}`);
+    logEarly(`[RENDER CRASH]\n${serializeError(e)}`);
   }
 } else {
   logEarly('[FATAL] No root element found!');

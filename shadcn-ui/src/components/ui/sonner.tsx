@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Toaster as Sonner, toast } from 'sonner';
+import { Toaster as Sonner, toast as sonnerToast } from 'sonner';
 
 type ToasterProps = ComponentProps<typeof Sonner>;
 
@@ -24,5 +24,40 @@ const Toaster = ({ ...props }: ToasterProps) => {
     />
   );
 };
+
+// Helper to ensure message is always a string
+const ensureString = (message: unknown): string => {
+  if (typeof message === 'string') return message;
+  if (message === null || message === undefined) return '';
+  if (message instanceof Error) return message.message;
+  if (typeof message === 'object') {
+    // Handle FastAPI/Pydantic validation errors
+    const obj = message as Record<string, unknown>;
+    if ('msg' in obj && typeof obj.msg === 'string') return obj.msg;
+    if ('message' in obj && typeof obj.message === 'string') return obj.message;
+    if ('detail' in obj && typeof obj.detail === 'string') return obj.detail;
+    try {
+      return JSON.stringify(message);
+    } catch {
+      return String(message);
+    }
+  }
+  return String(message);
+};
+
+// Wrapped toast functions that ensure messages are always strings
+const toast = Object.assign(
+  (message: unknown) => sonnerToast(ensureString(message)),
+  {
+    success: (message: unknown) => sonnerToast.success(ensureString(message)),
+    error: (message: unknown) => sonnerToast.error(ensureString(message)),
+    info: (message: unknown) => sonnerToast.info(ensureString(message)),
+    warning: (message: unknown) => sonnerToast.warning(ensureString(message)),
+    loading: (message: unknown) => sonnerToast.loading(ensureString(message)),
+    promise: sonnerToast.promise,
+    dismiss: sonnerToast.dismiss,
+    custom: sonnerToast.custom,
+  }
+);
 
 export { Toaster, toast };
