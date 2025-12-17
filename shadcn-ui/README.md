@@ -130,6 +130,12 @@ The app uses JWT token authentication:
 - Check CORS settings in backend
 - Ensure API endpoints match backend routes
 
+### iOS Device Debugging
+
+- Use your Mac's LAN IP (not `localhost`) in `.env` so the phone can reach the backend.
+- After changing `.env` or `Info.plist`, run `pnpm run build && npx cap sync ios` before rebuilding in Xcode.
+- The iOS project now includes ATS exceptions for the dev IP; switch back to HTTPS before submitting to the App Store.
+
 ### Build Errors
 
 ```bash
