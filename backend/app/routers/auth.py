@@ -32,14 +32,9 @@ class EmailSignupRequest(BaseModel):
     @field_validator('password')
     @classmethod
     def password_strength(cls, v):
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain an uppercase letter')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('Password must contain a lowercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain a number')
+        # Keep signup lenient for quick onboarding
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters')
         return v
 
 
@@ -98,6 +93,8 @@ class AuthResponse(BaseModel):
     refresh_token: Optional[str] = None
     expires_in: Optional[int] = None
     message: Optional[str] = None
+    token_type: Optional[str] = "bearer"
+    user: Optional[dict] = None
 
 
 # ============== IN-MEMORY STORAGE (Replace with database) ==============
@@ -195,7 +192,17 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
         user_id=user_id,
         access_token=access_token,
         expires_in=3600 * 24 * 7,  # 7 days
-        message="Account created. Please verify your email."
+        message="Account created. Please verify your email.",
+        token_type="bearer",
+        user={
+            "id": user_id,
+            "email": request.email,
+            "full_name": request.name or request.email.split("@")[0],
+            "created_at": users_db[user_id]["created_at"],
+            "comped": False,
+            "active_subscription": False,
+            "subscription_plan": None,
+        },
     )
 
 
@@ -301,7 +308,17 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks) -> Aut
             status="success",
             user_id=user["id"],
             access_token=access_token,
-            expires_in=3600 * 24 * 7
+            expires_in=3600 * 24 * 7,
+            token_type="bearer",
+            user={
+                "id": user["id"],
+                "email": user.get("email"),
+                "full_name": user.get("name"),
+                "created_at": user.get("created_at"),
+                "comped": user.get("comped"),
+                "active_subscription": user.get("active_subscription"),
+                "subscription_plan": user.get("subscription_plan"),
+            },
         )
 
     # Phone login - send code
@@ -360,7 +377,17 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks) -> Aut
             status="success",
             user_id=user["id"],
             access_token=access_token,
-            expires_in=3600 * 24 * 7
+            expires_in=3600 * 24 * 7,
+            token_type="bearer",
+            user={
+                "id": user["id"],
+                "email": user.get("email"),
+                "full_name": user.get("name"),
+                "created_at": user.get("created_at"),
+                "comped": user.get("comped"),
+                "active_subscription": user.get("active_subscription"),
+                "subscription_plan": user.get("subscription_plan"),
+            },
         )
 
     raise HTTPException(status_code=400, detail="Invalid login request")
