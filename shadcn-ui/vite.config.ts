@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => ({
     }),
     react(),
   ],
+  // Enable source maps for debugging in production builds
+  build: {
+    sourcemap: mode === 'development' ? true : 'hidden',
+  },
   server: {
     watch: { usePolling: true, interval: 800 /* 300~1500 */ },
     proxy: {
