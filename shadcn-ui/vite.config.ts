@@ -16,9 +16,10 @@ export default defineConfig(({ mode }) => ({
     }),
     react(),
   ],
-  // Enable source maps for debugging in production builds
+  // Enable source maps for debugging - always on for now to debug iOS crash
   build: {
-    sourcemap: mode === 'development' ? true : 'hidden',
+    sourcemap: true,
+    minify: false, // Disable minification temporarily for readable stack traces
   },
   server: {
     // Bind to all interfaces so mobile devices can connect
