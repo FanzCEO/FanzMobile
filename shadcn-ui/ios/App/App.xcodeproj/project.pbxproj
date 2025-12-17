@@ -30,6 +30,50 @@
 			);
 			script = "# realitytool\n";
 		};
+		76CD05BC2EF288A700DE29C2 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 1;
+			outputFiles = (
+			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
+		};
+		76CD05BD2EF288A900DE29C2 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 1;
+			outputFiles = (
+			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
+		};
+		76CD05BE2EF288AE00DE29C2 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 1;
+			outputFiles = (
+			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
+		};
+		76CD05BF2EF288B000DE29C2 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 1;
+			outputFiles = (
+			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
+		};
 /* End PBXBuildRule section */
 
 /* Begin PBXFileReference section */
@@ -157,6 +201,10 @@
 				504EC3021FED79650016851F /* Resources */,
 			);
 			buildRules = (
+				76CD05BF2EF288B000DE29C2 /* PBXBuildRule */,
+				76CD05BE2EF288AE00DE29C2 /* PBXBuildRule */,
+				76CD05BD2EF288A900DE29C2 /* PBXBuildRule */,
+				76CD05BC2EF288A700DE29C2 /* PBXBuildRule */,
 				760BE28B2EF0717C0031959B /* PBXBuildRule */,
 			);
 			dependencies = (
@@ -480,6 +528,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "App/AppDelegate.swift App/Base.lproj/LaunchScreen.storyboard App/public App/config.xml App/AppRelease.entitlements App/Assets.xcassets ../debug.xcconfig App/Info.plist App/capacitor.config.json App/Base.lproj/Main.storyboard App";
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WickedCRM;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -506,6 +556,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "App/AppDelegate.swift App/Base.lproj/LaunchScreen.storyboard App/public App/config.xml App/AppRelease.entitlements App/Assets.xcassets ../debug.xcconfig App/Info.plist App/capacitor.config.json App/Base.lproj/Main.storyboard App";
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WickedCRM;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
