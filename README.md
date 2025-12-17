@@ -1,94 +1,139 @@
-# WickedCRM
+# CRM Escort - AI Chief of Staff for Messages
 
-A comprehensive CRM platform with push-to-talk communications, billing, and mobile apps.
+> Your AI assistant that turns messages into contacts, meetings, and follow-ups — automatically.
 
-## Features
+## 🎯 Core Features
 
-- **Push-to-Talk (PTT)** - LiveKit-powered real-time voice channels
-- **Multi-Channel Communications** - SMS, WhatsApp, Telegram, Email
-- **Platform Billing** - Consumer-charged fees with CCBill/Segpay/Epoch integration
-- **Admin Console** - User access management and feature toggles
-- **Mobile Apps** - iOS and Android via Capacitor
+- **Smart Message Parsing**: AI extracts contacts, meetings, tasks, and locations from any message
+- **Auto-Contacts**: Every conversation becomes a searchable contact with full history
+- **Location Intelligence**: Tracks cities, hotels, Airbnbs, and meetup spots automatically
+- **Calendar Sync**: Events pushed to Google Calendar, Outlook, or device calendar
+- **Workflow Engine**: Automated responses, confirmations, and follow-ups
+- **Multi-Channel**: SMS (Twilio), RM Chat integration, email, manual input
+- **Futuristic UI**: Neon Intelligence design system with AI Orb interface
 
-## Tech Stack
+## 🏗️ Architecture
 
-| Component | Technology |
-|-----------|------------|
-| Frontend | React + Vite + TypeScript + shadcn/ui |
-| Backend | FastAPI + SQLAlchemy + PostgreSQL |
-| Mobile | Capacitor (iOS + Android) |
-| Real-time | LiveKit (PTT) + WebSocket |
-| Database | PostgreSQL (Supabase) |
-| Auth | JWT |
+### Backend (FastAPI + PostgreSQL)
+- API server with JWT auth
+- AI extraction pipeline (OpenAI/compatible)
+- Message ingestion from multiple channels
+- Calendar & contact sync services
+- Workflow automation engine
 
-## Project Structure
+### Mobile Apps
+- **iOS**: Swift/SwiftUI native app
+- **Android**: Kotlin/Jetpack Compose native app
+- Both connect to backend API
+
+### Integrations
+- Twilio (SMS)
+- Google Calendar
+- Outlook Calendar
+- Device calendar/contacts
+- RM Chat (via supported channels)
+
+## 📁 Project Structure
 
 ```
-├── shadcn-ui/          # React frontend + Capacitor mobile
-│   ├── src/            # React source
-│   ├── ios/            # iOS native project
-│   └── android/        # Android native project
-├── backend/            # FastAPI backend
+crm-escort-ai/
+├── backend/              # FastAPI backend
 │   ├── app/
-│   │   ├── routers/    # API endpoints
-│   │   ├── models/     # SQLAlchemy models
-│   │   └── services/   # Business logic
-└── legal/              # Legal documents
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   ├── routers/
+│   │   ├── services/
+│   │   └── workers/
+│   ├── requirements.txt
+│   └── Dockerfile
+├── mobile/
+│   ├── ios/             # Swift/SwiftUI app
+│   └── android/         # Kotlin/Compose app
+├── design/
+│   ├── figma-pack/      # Complete design system
+│   └── assets/
+├── docs/
+│   ├── API.md
+│   ├── DEPLOYMENT.md
+│   └── WORKFLOWS.md
+└── docker-compose.yml
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### Backend
+### Backend Setup
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env  # Configure your secrets
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+### Database Setup
 ```bash
-cd shadcn-ui
-pnpm install
-pnpm run dev
+docker-compose up -d postgres redis
+python scripts/init_db.py
 ```
 
-### Mobile Build
-```bash
-cd shadcn-ui
-pnpm run build
-npx cap sync
-npx cap open ios     # Opens Xcode
-npx cap open android # Opens Android Studio
-```
+### Mobile Development
+See `mobile/ios/README.md` and `mobile/android/README.md`
 
-## Environment Variables
+## 🎨 Design System
 
-### Frontend (.env)
-```
-VITE_API_BASE_URL=https://your-api.com
-VITE_LIVEKIT_URL=wss://your-livekit.cloud
-VITE_WS_URL=wss://your-api.com/ws
-```
+**Theme**: Neon Intelligence (Futuristic 2035 AI OS)
 
-### Backend (.env)
-```
-DATABASE_URL=postgresql://...
-JWT_SECRET=your-secret
-LIVEKIT_API_KEY=your-key
-LIVEKIT_API_SECRET=your-secret
-```
+- Deep void backgrounds (#0A0A0E)
+- Neon gradients (Blue #2D6FFF, Violet #A45CFF, Cyan #33E6FF)
+- Glass morphism UI panels
+- AI Orb centerpiece with pulsing states
+- Holographic contact avatars
 
-## API Documentation
+See `design/figma-pack/` for complete component library.
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+## 🔐 Security & Privacy
 
-## License
+- JWT authentication with refresh tokens
+- TLS 1.3 for all transport
+- AES-256 encryption at rest
+- Self-hosted: your data stays on your infrastructure
+- Optional on-device AI for extra privacy
 
-Proprietary - All rights reserved
+## 📱 Platform Support
 
----
+- iOS 15+
+- Android 10+ (API 29+)
+- Web dashboard (future)
 
-Built with Claude Code
+## 🔌 Integrations
+
+### Current
+- Twilio SMS
+- Google Calendar OAuth
+- Microsoft Outlook Calendar
+- Device calendar (native APIs)
+
+### Planned
+- WhatsApp Business API
+- RM Chat (Rent.Men) - via official API/partner access
+- Email providers (Gmail, Outlook)
+- Slack notifications
+
+## 🤖 AI Features
+
+- Contact extraction (name, phone, organization, role)
+- Meeting detection (date, time, location, participants)
+- Task/follow-up detection (due dates, priorities)
+- Location classification (home, hotel, Airbnb, office)
+- Intent analysis (booking, collab, urgent, casual)
+- Smart templates with context variables
+- Workflow automation
+
+## 📄 License
+
+Proprietary - FANZ Unlimited Network
+
+## 🙋 Support
+
+For issues or questions, contact dev@fanz.network
