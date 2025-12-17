@@ -3,9 +3,11 @@ LiveKit Token Generation Router
 Generates access tokens for LiveKit rooms (PTT/voice channels).
 """
 
+print("DEBUG: Loading livekit.py, file path is:", __file__)
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from livekit import api
+from livekit.protocol.auth import AccessToken, VideoGrant
 from app.config import settings
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
@@ -39,7 +41,7 @@ async def generate_token(request: TokenRequest):
         )
 
     # Create access token with grants
-    token = api.AccessToken(
+    token = AccessToken(
         settings.livekit_api_key,
         settings.livekit_api_secret
     )
@@ -49,7 +51,7 @@ async def generate_token(request: TokenRequest):
         token.with_name(request.name)
 
     # Grant permissions for the room
-    token.with_grants(api.VideoGrants(
+    token.with_grants(VideoGrant(
         room_join=True,
         room=request.room,
         can_publish=True,
