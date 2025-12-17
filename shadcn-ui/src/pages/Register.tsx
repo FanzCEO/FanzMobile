@@ -31,7 +31,14 @@ export default function Register() {
       navigate('/');
     } catch (error) {
       const axiosError = error as AxiosError<{ detail: string }>;
-      const errorMessage = axiosError.response?.data ? JSON.stringify(axiosError.response.data) : 'Registration failed';
+      let errorMessage = 'Registration failed (unknown error)';
+      if (axiosError.response?.data) {
+        errorMessage = JSON.stringify(axiosError.response.data);
+      } else if (axiosError.message) {
+        errorMessage = axiosError.message;
+      } else {
+        errorMessage = String(error); // Fallback to stringifying the generic error object
+      }
       toast.error(errorMessage);
     } finally {
       setLoading(false);

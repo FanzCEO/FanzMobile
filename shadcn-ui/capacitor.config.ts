@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     // Use bundled assets for App Store build; enable only if loading remote during dev
-    // url: 'https://rent.fanz.website',
+    url: 'https://rent.fanz.website',
     cleartext: false
   },
   plugins: {
