@@ -15,6 +15,29 @@ export class ErrorBoundary extends Component<Props, State> {
     error: null,
   };
 
+  private unsubscribe?: () => void;
+
+  componentDidMount() {
+    const handleGlobalError = (event: ErrorEvent) => {
+      // Capture unexpected runtime errors (outside React render)
+      this.setState({ hasError: true, error: event.error || new Error(event.message) });
+    };
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const err = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+      this.setState({ hasError: true, error: err });
+    };
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    this.unsubscribe = () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }
+
+  componentWillUnmount() {
+    if (this.unsubscribe) this.unsubscribe();
+  }
+
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
@@ -30,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="max-w-lg text-center">
             <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
             <pre className="text-left bg-gray-900 p-4 rounded-lg overflow-auto text-sm mb-4">
-              {this.state.error?.message}
+              {this.state.error?.stack || this.state.error?.message}
             </pre>
             <button
               onClick={() => window.location.reload()}
