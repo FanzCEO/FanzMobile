@@ -1,16 +1,20 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Set USE_LIVE_RELOAD=true for development with live reload
+// Live reload configuration for Capacitor development
+// Set USE_LIVE_RELOAD=true and optionally LIVE_RELOAD_URL to your machine's LAN IP
+// Example: USE_LIVE_RELOAD=true LIVE_RELOAD_URL=http://192.168.5.240:5173 npx cap sync
 const useLiveReload = process.env.USE_LIVE_RELOAD === 'true';
+const liveReloadUrl = process.env.LIVE_RELOAD_URL || 'http://localhost:5173';
 
 const config: CapacitorConfig = {
   appId: 'com.fanz.rentcrm',
   appName: 'WickedCRM',
   webDir: 'dist',
   // Only use server.url for live reload during development
+  // For real device testing, set LIVE_RELOAD_URL to your dev machine's LAN IP
   ...(useLiveReload && {
     server: {
-      url: 'http://localhost:5173',
+      url: liveReloadUrl,
       cleartext: true,
     },
   }),
