@@ -59,7 +59,9 @@ const App = () => (
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              {/* Registration temporarily disabled for testing */}
+              {/* <Route path="/register" element={<Register />} /> */}
+              <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
