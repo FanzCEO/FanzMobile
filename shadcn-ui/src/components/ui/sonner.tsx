@@ -25,39 +25,81 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
-// Helper to ensure message is always a string
-const ensureString = (message: unknown): string => {
-  if (typeof message === 'string') return message;
-  if (message === null || message === undefined) return '';
-  if (message instanceof Error) return message.message;
-  if (typeof message === 'object') {
-    // Handle FastAPI/Pydantic validation errors
-    const obj = message as Record<string, unknown>;
-    if ('msg' in obj && typeof obj.msg === 'string') return obj.msg;
-    if ('message' in obj && typeof obj.message === 'string') return obj.message;
-    if ('detail' in obj && typeof obj.detail === 'string') return obj.detail;
+/**
+ * Convert any error to a user-friendly toast string.
+ * Handles FastAPI/Pydantic validation errors which have shape:
+ * { type, loc, msg, input } or arrays of those under "detail"
+ */
+const toToastText = (err: unknown): string => {
+  if (!err) return 'Something went wrong';
+
+  // If it's already a string, return it
+  if (typeof err === 'string') return err;
+
+  // If it's a normal Error instance
+  if (err instanceof Error) return err.message || 'Something went wrong';
+
+  // Handle objects
+  if (typeof err === 'object' && err !== null) {
+    const obj = err as Record<string, unknown>;
+
+    // Check for "detail" property (common in FastAPI responses)
+    const detail = obj.detail ?? obj;
+
+    // If detail is a string, return it
+    if (typeof detail === 'string') return detail;
+
+    // If it's an array of validation errors (FastAPI/Pydantic style)
+    if (Array.isArray(detail)) {
+      const msgs = detail
+        .map((e) => {
+          if (typeof e === 'string') return e;
+          if (typeof e === 'object' && e !== null) {
+            return e.msg || e.message || null;
+          }
+          return null;
+        })
+        .filter(Boolean);
+      return msgs.length ? msgs.join('. ') : 'Validation failed';
+    }
+
+    // If it's a single validation error object with msg/message
+    if (typeof detail === 'object' && detail !== null) {
+      const detailObj = detail as Record<string, unknown>;
+      if (detailObj.msg) return String(detailObj.msg);
+      if (detailObj.message) return String(detailObj.message);
+    }
+
+    // Check top-level msg/message/detail
+    if (obj.msg) return String(obj.msg);
+    if (obj.message) return String(obj.message);
+
+    // Last resort: stringify but keep it short
     try {
-      return JSON.stringify(message);
+      const json = JSON.stringify(err);
+      return json.length > 200 ? json.slice(0, 200) + '...' : json;
     } catch {
-      return String(message);
+      return 'Something went wrong';
     }
   }
-  return String(message);
+
+  return String(err);
 };
 
 // Wrapped toast functions that ensure messages are always strings
 const toast = Object.assign(
-  (message: unknown) => sonnerToast(ensureString(message)),
+  (message: unknown) => sonnerToast(toToastText(message)),
   {
-    success: (message: unknown) => sonnerToast.success(ensureString(message)),
-    error: (message: unknown) => sonnerToast.error(ensureString(message)),
-    info: (message: unknown) => sonnerToast.info(ensureString(message)),
-    warning: (message: unknown) => sonnerToast.warning(ensureString(message)),
-    loading: (message: unknown) => sonnerToast.loading(ensureString(message)),
+    success: (message: unknown) => sonnerToast.success(toToastText(message)),
+    error: (message: unknown) => sonnerToast.error(toToastText(message)),
+    info: (message: unknown) => sonnerToast.info(toToastText(message)),
+    warning: (message: unknown) => sonnerToast.warning(toToastText(message)),
+    loading: (message: unknown) => sonnerToast.loading(toToastText(message)),
     promise: sonnerToast.promise,
     dismiss: sonnerToast.dismiss,
     custom: sonnerToast.custom,
   }
 );
+
 
 export { Toaster, toast };
