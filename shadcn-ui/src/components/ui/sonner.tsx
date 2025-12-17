@@ -55,12 +55,17 @@ const toToastText = (err: unknown): string => {
         .map((e) => {
           if (typeof e === 'string') return e;
           if (typeof e === 'object' && e !== null) {
-            return e.msg || e.message || null;
+            // Include field location for better context if available
+            const loc = Array.isArray(e.loc) ? e.loc.filter((l: unknown) => l !== 'body').join('.') : '';
+            const msg = e.msg || e.message || null;
+            return loc && msg ? `${loc}: ${msg}` : msg;
           }
           return null;
         })
         .filter(Boolean);
-      return msgs.length ? msgs.join('. ') : 'Validation failed';
+      // De-duplicate identical messages
+      const uniqueMsgs = [...new Set(msgs)];
+      return uniqueMsgs.length ? uniqueMsgs.join('. ') : 'Validation failed';
     }
 
     // If it's a single validation error object with msg/message
