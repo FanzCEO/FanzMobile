@@ -12,12 +12,14 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   // Only use server.url for live reload during development
   // For real device testing, set LIVE_RELOAD_URL to your dev machine's LAN IP
-  ...(useLiveReload && {
-    server: {
-      url: liveReloadUrl,
-      cleartext: true,
-    },
-  }),
+  ...(useLiveReload
+    ? {
+        server: {
+          url: liveReloadUrl,
+          cleartext: true,
+        },
+      }
+    : {}),
   plugins: {
     SplashScreen: {
       launchShowDuration: 0,
