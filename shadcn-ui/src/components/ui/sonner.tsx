@@ -57,8 +57,12 @@ const toToastText = (err: unknown): string => {
           if (typeof e === 'object' && e !== null) {
             // Include field location for better context if available
             const loc = Array.isArray(e.loc) ? e.loc.filter((l: unknown) => l !== 'body').join('.') : '';
-            const msg = e.msg || e.message || null;
-            return loc && msg ? `${loc}: ${msg}` : msg;
+            const msg = e.msg || e.message || '';
+            // Return location with message, or just location, or just message
+            if (loc && msg) return `${loc}: ${msg}`;
+            if (loc) return `${loc}: Invalid`;
+            if (msg) return msg;
+            return null;
           }
           return null;
         })
