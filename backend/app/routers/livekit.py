@@ -7,7 +7,7 @@ print("DEBUG: Loading livekit.py, file path is:", __file__)
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from livekit.protocol.auth import AccessToken, VideoGrant
+from livekit.api import AccessToken, VideoGrants
 from app.config import settings
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
@@ -51,7 +51,7 @@ async def generate_token(request: TokenRequest):
         token.with_name(request.name)
 
     # Grant permissions for the room
-    token.with_grants(VideoGrant(
+    token.with_grants(VideoGrants(
         room_join=True,
         room=request.room,
         can_publish=True,
