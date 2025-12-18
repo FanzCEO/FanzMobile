@@ -168,7 +168,7 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
                 user={
                     "id": str(existing_user.id),
                     "email": existing_user.email,
-                    "full_name": existing_user.name or existing_user.email.split("@")[0],
+                    "full_name": existing_user.full_name or existing_user.email.split("@")[0],
                     "created_at": existing_user.created_at.isoformat(),
                     "comped": existing_user.comped,
                     "active_subscription": existing_user.active_subscription,
@@ -178,14 +178,14 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
         else:
             # Allow overriding the password if it doesn't match (to avoid being blocked)
             existing_user.password_hash = hash_password(request.password)
-            existing_user.name = request.name or request.full_name or existing_user.name
+            existing_user.full_name = request.name or request.full_name or existing_user.full_name
             db.commit()
             user_id = existing_user.id
     else:
         new_user = User(
             email=request.email,
             password_hash=hash_password(request.password),
-            name=request.name or request.full_name,
+            full_name=request.name or request.full_name,
         )
         db.add(new_user)
         db.commit()
@@ -223,7 +223,7 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
         user={
             "id": str(user.id),
             "email": user.email,
-            "full_name": user.name or user.email.split("@")[0],
+            "full_name": user.full_name or user.email.split("@")[0],
             "created_at": user.created_at.isoformat(),
             "comped": user.comped,
             "active_subscription": user.active_subscription,
@@ -347,7 +347,7 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Se
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.name,
+                "full_name": user.full_name,
                 "created_at": user.created_at.isoformat(),
                 "comped": user.comped,
                 "active_subscription": user.active_subscription,
@@ -410,7 +410,7 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Se
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.name,
+                "full_name": user.full_name,
                 "created_at": user.created_at.isoformat(),
                 "comped": user.comped,
                 "active_subscription": user.active_subscription,
