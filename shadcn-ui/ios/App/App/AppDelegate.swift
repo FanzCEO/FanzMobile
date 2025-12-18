@@ -1,7 +1,7 @@
 import UIKit
 import Capacitor
 
-@main
+@UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
