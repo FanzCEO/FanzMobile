@@ -29,10 +29,21 @@ export default function Register() {
       toast.success('Account created successfully!');
       navigate('/');
     } catch (error) {
-      // Use toToastText to safely extract error message from Axios/FastAPI responses
-      const axiosError = error as { response?: { data?: unknown }; message?: string };
+      const axiosError = error as { response?: { data?: unknown; status?: number }; message?: string };
       const errorData = axiosError.response?.data ?? axiosError.message ?? error;
-      toast.error(toToastText(errorData) || 'Registration failed');
+      const errorMessage = toToastText(errorData);
+
+      // Check if signup endpoint doesn't exist or login failed with "incorrect password"
+      // This means the user doesn't exist and signup isn't available
+      if (
+        axiosError.response?.status === 404 ||
+        errorMessage?.toLowerCase().includes('incorrect') ||
+        errorMessage?.toLowerCase().includes('not found')
+      ) {
+        toast.error('Registration is currently unavailable. Please contact support or try again later.');
+      } else {
+        toast.error(errorMessage || 'Registration failed');
+      }
     } finally {
       setLoading(false);
     }
