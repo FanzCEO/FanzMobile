@@ -35,16 +35,38 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
+// Admin emails - add authorized admin emails here
+const ADMIN_EMAILS = [
+  'admin@wickedcrm.com',
+  'wyatt@fanz.website',
+  'wyattxxxcole@gmail.com',
+];
 
-  const accessKnown = user && ('comped' in user || 'active_subscription' in user);
-  const hasAccess = Boolean(user?.comped) || Boolean(user?.active_subscription);
-  const onBillingPage = location.pathname === '/billing';
+export function isAdminUser(email: string | undefined): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (accessKnown && !hasAccess && !onBillingPage) return <Navigate to="/billing" replace />;
+
+  // Billing gate removed - all authenticated users have access
+  // To re-enable billing, uncomment the following:
+  // const { user } = useAuth();
+  // const location = useLocation();
+  // const hasAccess = Boolean(user?.comped) || Boolean(user?.active_subscription);
+  // if (!hasAccess && location.pathname !== '/billing') return <Navigate to="/billing" replace />;
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdminUser(user?.email)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -83,7 +105,7 @@ const App = () => (
                 <Route path="/import" element={<Import />} />
                 <Route path="/ai" element={<AIAssistant />} />
                 <Route path="/billing" element={<Billing />} />
-                <Route path="/admin" element={<AdminConsole />} />
+                <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
 

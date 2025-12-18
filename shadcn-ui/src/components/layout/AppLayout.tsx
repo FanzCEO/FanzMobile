@@ -4,13 +4,13 @@ import { TopBar } from './TopBar';
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-hidden w-full max-w-[100vw]">
       <Sidebar />
       {/* Mobile: no margin, Desktop: margin for sidebar */}
-      <div className="lg:ml-72 transition-all duration-300 w-full overflow-x-hidden">
+      <div className="lg:ml-72 transition-all duration-300 overflow-x-hidden min-h-screen">
         <TopBar />
-        <main className="px-3 py-4 sm:px-4 lg:px-6 pt-16 lg:pt-6 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="px-3 py-4 sm:px-4 lg:px-6 pt-16 lg:pt-6 overflow-x-hidden w-full">
+          <div className="max-w-7xl mx-auto w-full overflow-x-hidden">
             <Outlet />
           </div>
         </main>

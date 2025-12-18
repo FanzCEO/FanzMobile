@@ -116,6 +116,279 @@ const CONDITION_FIELDS = [
   { id: 'tags', name: 'Contact Tags' },
 ];
 
+// Moved outside to prevent re-render on every keystroke
+interface WorkflowFormProps {
+  editingWorkflow: Partial<Workflow>;
+  setEditingWorkflow: (workflow: Partial<Workflow>) => void;
+  isEdit?: boolean;
+}
+
+function WorkflowForm({ editingWorkflow, setEditingWorkflow, isEdit = false }: WorkflowFormProps) {
+  const addCondition = () => {
+    setEditingWorkflow({
+      ...editingWorkflow,
+      conditions: [...(editingWorkflow.conditions || []), { field: 'direction', operator: 'equals', value: '' }],
+    });
+  };
+
+  const removeCondition = (index: number) => {
+    const newConditions = [...(editingWorkflow.conditions || [])];
+    newConditions.splice(index, 1);
+    setEditingWorkflow({ ...editingWorkflow, conditions: newConditions });
+  };
+
+  const updateCondition = (index: number, field: keyof WorkflowCondition, value: string) => {
+    const newConditions = [...(editingWorkflow.conditions || [])];
+    newConditions[index] = { ...newConditions[index], [field]: value };
+    setEditingWorkflow({ ...editingWorkflow, conditions: newConditions });
+  };
+
+  const addAction = () => {
+    setEditingWorkflow({
+      ...editingWorkflow,
+      actions: [...(editingWorkflow.actions || []), { type: 'send_message', config: {} }],
+    });
+  };
+
+  const removeAction = (index: number) => {
+    const newActions = [...(editingWorkflow.actions || [])];
+    newActions.splice(index, 1);
+    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
+  };
+
+  const updateAction = (index: number, type: string) => {
+    const newActions = [...(editingWorkflow.actions || [])];
+    newActions[index] = { type, config: {} };
+    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
+  };
+
+  const updateActionConfig = (index: number, key: string, value: string) => {
+    const newActions = [...(editingWorkflow.actions || [])];
+    newActions[index] = { ...newActions[index], config: { ...newActions[index].config, [key]: value } };
+    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
+  };
+
+  return (
+    <Tabs defaultValue="basic" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="basic">Basic</TabsTrigger>
+        <TabsTrigger value="conditions">Conditions</TabsTrigger>
+        <TabsTrigger value="actions">Actions</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="basic" className="space-y-4 mt-4">
+        <div className="space-y-2">
+          <Label htmlFor="wf-name">Workflow Name *</Label>
+          <Input
+            id="wf-name"
+            placeholder="e.g., Auto-respond to new messages"
+            value={editingWorkflow.name || ''}
+            onChange={(e) => setEditingWorkflow({ ...editingWorkflow, name: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="wf-description">Description</Label>
+          <Textarea
+            id="wf-description"
+            placeholder="What does this workflow do?"
+            value={editingWorkflow.description || ''}
+            onChange={(e) => setEditingWorkflow({ ...editingWorkflow, description: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="wf-trigger">Trigger *</Label>
+          <Select
+            value={editingWorkflow.trigger}
+            onValueChange={(value) => setEditingWorkflow({ ...editingWorkflow, trigger: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a trigger" />
+            </SelectTrigger>
+            <SelectContent>
+              {TRIGGERS.map((trigger) => (
+                <SelectItem key={trigger.id} value={trigger.id}>
+                  <div>
+                    <div className="font-medium">{trigger.name}</div>
+                    <div className="text-xs text-muted-foreground">{trigger.description}</div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Enabled</Label>
+            <p className="text-sm text-muted-foreground">Workflow will run when enabled</p>
+          </div>
+          <Switch
+            checked={editingWorkflow.enabled}
+            onCheckedChange={(checked) => setEditingWorkflow({ ...editingWorkflow, enabled: checked })}
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="conditions" className="space-y-4 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Conditions</Label>
+            <p className="text-sm text-muted-foreground">Filter when this workflow runs</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={addCondition}>
+            <Plus className="h-4 w-4 mr-1" /> Add
+          </Button>
+        </div>
+
+        {(editingWorkflow.conditions || []).length === 0 ? (
+          <Card className="p-4 text-center text-muted-foreground">
+            <p>No conditions - workflow runs on every trigger</p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {(editingWorkflow.conditions || []).map((condition, index) => (
+              <Card key={`condition-${index}`} className="p-3">
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={condition.field}
+                    onValueChange={(value) => updateCondition(index, 'field', value)}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONDITION_FIELDS.map((field) => (
+                        <SelectItem key={field.id} value={field.id}>{field.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={condition.operator}
+                    onValueChange={(value) => updateCondition(index, 'operator', value)}
+                  >
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPERATORS.map((op) => (
+                        <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Value"
+                    value={condition.value}
+                    onChange={(e) => updateCondition(index, 'value', e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => removeCondition(index)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="actions" className="space-y-4 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Actions</Label>
+            <p className="text-sm text-muted-foreground">What happens when triggered</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={addAction}>
+            <Plus className="h-4 w-4 mr-1" /> Add
+          </Button>
+        </div>
+
+        {(editingWorkflow.actions || []).length === 0 ? (
+          <Card className="p-4 text-center text-muted-foreground">
+            <p>No actions configured</p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {(editingWorkflow.actions || []).map((action, index) => (
+              <Card key={`action-${index}`} className="p-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 space-y-2">
+                    <Select
+                      value={action.type}
+                      onValueChange={(value) => updateAction(index, value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACTIONS.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            <div>
+                              <div className="font-medium">{a.name}</div>
+                              <div className="text-xs text-muted-foreground">{a.description}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Action-specific config */}
+                    {action.type === 'send_message' && (
+                      <div className="space-y-2 pl-2 border-l-2">
+                        <Input
+                          placeholder="Message template or text"
+                          value={action.config?.template || action.config?.message || ''}
+                          onChange={(e) => updateActionConfig(index, 'message', e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {action.type === 'add_tag' && (
+                      <Input
+                        placeholder="Tag name"
+                        value={action.config?.tag || ''}
+                        onChange={(e) => updateActionConfig(index, 'tag', e.target.value)}
+                      />
+                    )}
+                    {action.type === 'remove_tag' && (
+                      <Input
+                        placeholder="Tag name"
+                        value={action.config?.tag || ''}
+                        onChange={(e) => updateActionConfig(index, 'tag', e.target.value)}
+                      />
+                    )}
+                    {action.type === 'create_task' && (
+                      <Input
+                        placeholder="Task title"
+                        value={action.config?.title || ''}
+                        onChange={(e) => updateActionConfig(index, 'title', e.target.value)}
+                      />
+                    )}
+                    {action.type === 'send_notification' && (
+                      <Input
+                        placeholder="Notification message"
+                        value={action.config?.message || ''}
+                        onChange={(e) => updateActionConfig(index, 'message', e.target.value)}
+                      />
+                    )}
+                    {action.type === 'trigger_webhook' && (
+                      <Input
+                        placeholder="Webhook URL"
+                        value={action.config?.url || ''}
+                        onChange={(e) => updateActionConfig(index, 'url', e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => removeAction(index)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export default function Workflows() {
   const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -264,270 +537,6 @@ export default function Workflows() {
     }
   };
 
-  const addCondition = () => {
-    setEditingWorkflow({
-      ...editingWorkflow,
-      conditions: [...(editingWorkflow.conditions || []), { field: 'direction', operator: 'equals', value: '' }],
-    });
-  };
-
-  const removeCondition = (index: number) => {
-    const newConditions = [...(editingWorkflow.conditions || [])];
-    newConditions.splice(index, 1);
-    setEditingWorkflow({ ...editingWorkflow, conditions: newConditions });
-  };
-
-  const updateCondition = (index: number, field: keyof WorkflowCondition, value: string) => {
-    const newConditions = [...(editingWorkflow.conditions || [])];
-    newConditions[index] = { ...newConditions[index], [field]: value };
-    setEditingWorkflow({ ...editingWorkflow, conditions: newConditions });
-  };
-
-  const addAction = () => {
-    setEditingWorkflow({
-      ...editingWorkflow,
-      actions: [...(editingWorkflow.actions || []), { type: 'send_message', config: {} }],
-    });
-  };
-
-  const removeAction = (index: number) => {
-    const newActions = [...(editingWorkflow.actions || [])];
-    newActions.splice(index, 1);
-    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
-  };
-
-  const updateAction = (index: number, type: string) => {
-    const newActions = [...(editingWorkflow.actions || [])];
-    newActions[index] = { type, config: {} };
-    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
-  };
-
-  const updateActionConfig = (index: number, key: string, value: string) => {
-    const newActions = [...(editingWorkflow.actions || [])];
-    newActions[index] = { ...newActions[index], config: { ...newActions[index].config, [key]: value } };
-    setEditingWorkflow({ ...editingWorkflow, actions: newActions });
-  };
-
-  const WorkflowForm = ({ isEdit = false }: { isEdit?: boolean }) => (
-    <Tabs defaultValue="basic" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="basic">Basic</TabsTrigger>
-        <TabsTrigger value="conditions">Conditions</TabsTrigger>
-        <TabsTrigger value="actions">Actions</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="basic" className="space-y-4 mt-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Workflow Name *</Label>
-          <Input
-            id="name"
-            placeholder="e.g., Auto-respond to new messages"
-            value={editingWorkflow.name || ''}
-            onChange={(e) => setEditingWorkflow({ ...editingWorkflow, name: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            placeholder="What does this workflow do?"
-            value={editingWorkflow.description || ''}
-            onChange={(e) => setEditingWorkflow({ ...editingWorkflow, description: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="trigger">Trigger *</Label>
-          <Select
-            value={editingWorkflow.trigger}
-            onValueChange={(value) => setEditingWorkflow({ ...editingWorkflow, trigger: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a trigger" />
-            </SelectTrigger>
-            <SelectContent>
-              {TRIGGERS.map((trigger) => (
-                <SelectItem key={trigger.id} value={trigger.id}>
-                  <div>
-                    <div className="font-medium">{trigger.name}</div>
-                    <div className="text-xs text-muted-foreground">{trigger.description}</div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>Enabled</Label>
-            <p className="text-sm text-muted-foreground">Workflow will run when enabled</p>
-          </div>
-          <Switch
-            checked={editingWorkflow.enabled}
-            onCheckedChange={(checked) => setEditingWorkflow({ ...editingWorkflow, enabled: checked })}
-          />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="conditions" className="space-y-4 mt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>Conditions</Label>
-            <p className="text-sm text-muted-foreground">Filter when this workflow runs</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={addCondition}>
-            <Plus className="h-4 w-4 mr-1" /> Add
-          </Button>
-        </div>
-
-        {(editingWorkflow.conditions || []).length === 0 ? (
-          <Card className="p-4 text-center text-muted-foreground">
-            <p>No conditions - workflow runs on every trigger</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {(editingWorkflow.conditions || []).map((condition, index) => (
-              <Card key={index} className="p-3">
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={condition.field}
-                    onValueChange={(value) => updateCondition(index, 'field', value)}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONDITION_FIELDS.map((field) => (
-                        <SelectItem key={field.id} value={field.id}>{field.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={condition.operator}
-                    onValueChange={(value) => updateCondition(index, 'operator', value)}
-                  >
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {OPERATORS.map((op) => (
-                        <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="Value"
-                    value={condition.value}
-                    onChange={(e) => updateCondition(index, 'value', e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button variant="ghost" size="icon" onClick={() => removeCondition(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </TabsContent>
-
-      <TabsContent value="actions" className="space-y-4 mt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>Actions</Label>
-            <p className="text-sm text-muted-foreground">What happens when triggered</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={addAction}>
-            <Plus className="h-4 w-4 mr-1" /> Add
-          </Button>
-        </div>
-
-        {(editingWorkflow.actions || []).length === 0 ? (
-          <Card className="p-4 text-center text-muted-foreground">
-            <p>No actions configured</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {(editingWorkflow.actions || []).map((action, index) => (
-              <Card key={index} className="p-3">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 space-y-2">
-                    <Select
-                      value={action.type}
-                      onValueChange={(value) => updateAction(index, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACTIONS.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            <div>
-                              <div className="font-medium">{a.name}</div>
-                              <div className="text-xs text-muted-foreground">{a.description}</div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Action-specific config */}
-                    {action.type === 'send_message' && (
-                      <div className="space-y-2 pl-2 border-l-2">
-                        <Input
-                          placeholder="Message template or text"
-                          value={action.config?.template || action.config?.message || ''}
-                          onChange={(e) => updateActionConfig(index, 'message', e.target.value)}
-                        />
-                      </div>
-                    )}
-                    {action.type === 'add_tag' && (
-                      <Input
-                        placeholder="Tag name"
-                        value={action.config?.tag || ''}
-                        onChange={(e) => updateActionConfig(index, 'tag', e.target.value)}
-                      />
-                    )}
-                    {action.type === 'remove_tag' && (
-                      <Input
-                        placeholder="Tag name"
-                        value={action.config?.tag || ''}
-                        onChange={(e) => updateActionConfig(index, 'tag', e.target.value)}
-                      />
-                    )}
-                    {action.type === 'create_task' && (
-                      <Input
-                        placeholder="Task title"
-                        value={action.config?.title || ''}
-                        onChange={(e) => updateActionConfig(index, 'title', e.target.value)}
-                      />
-                    )}
-                    {action.type === 'send_notification' && (
-                      <Input
-                        placeholder="Notification message"
-                        value={action.config?.message || ''}
-                        onChange={(e) => updateActionConfig(index, 'message', e.target.value)}
-                      />
-                    )}
-                    {action.type === 'trigger_webhook' && (
-                      <Input
-                        placeholder="Webhook URL"
-                        value={action.config?.url || ''}
-                        onChange={(e) => updateActionConfig(index, 'url', e.target.value)}
-                      />
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeAction(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
-  );
-
   return (
     <div className="space-y-6 w-full overflow-x-hidden">
       {/* Header */}
@@ -665,7 +674,7 @@ export default function Workflows() {
               Set up automation rules to handle tasks automatically
             </DialogDescription>
           </DialogHeader>
-          <WorkflowForm />
+          <WorkflowForm editingWorkflow={editingWorkflow} setEditingWorkflow={setEditingWorkflow} />
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
@@ -690,7 +699,7 @@ export default function Workflows() {
               Modify your workflow settings
             </DialogDescription>
           </DialogHeader>
-          <WorkflowForm isEdit />
+          <WorkflowForm editingWorkflow={editingWorkflow} setEditingWorkflow={setEditingWorkflow} isEdit />
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel

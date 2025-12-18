@@ -21,8 +21,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { isAdminUser } from '@/App';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Comms', href: '/comms', icon: Radio },
@@ -43,9 +44,10 @@ const navigation = [
   { name: 'Import', href: '/import', icon: Upload },
   { name: 'AI Assistant', href: '/ai', icon: Bot },
   { name: 'Billing', href: '/billing', icon: CreditCard },
-  { name: 'Admin', href: '/admin', icon: Shield },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
+
+const adminNavItem = { name: 'Admin', href: '/admin', icon: Shield };
+const settingsNavItem = { name: 'Settings', href: '/settings', icon: Settings };
 
 export function Sidebar() {
   const location = useLocation();
@@ -53,6 +55,16 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, clearAuth } = useAuth();
+
+  // Build navigation based on user role
+  const navigation = useMemo(() => {
+    const nav = [...baseNavigation];
+    if (isAdminUser(user?.email)) {
+      nav.push(adminNavItem);
+    }
+    nav.push(settingsNavItem);
+    return nav;
+  }, [user?.email]);
 
   // Close mobile menu on route change
   useEffect(() => {
