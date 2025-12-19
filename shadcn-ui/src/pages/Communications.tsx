@@ -89,8 +89,7 @@ export default function Communications() {
     retry: false,
   });
 
-  const livekitConfigured =
-    !!import.meta.env.VITE_LIVEKIT_URL && !!import.meta.env.VITE_LIVEKIT_API_KEY && !!import.meta.env.VITE_LIVEKIT_API_SECRET;
+  const livekitConfigured = !!import.meta.env.VITE_LIVEKIT_URL;
   const wsBase = import.meta.env.VITE_WS_URL as string | undefined;
   const userId = user?.id || user?.email || 'anonymous';
   const roomId = selectedThread?.id || 'global';
@@ -398,7 +397,7 @@ export default function Communications() {
                 {!livekitConfigured && (
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3 text-amber-400" />
-                    Set VITE_LIVEKIT_URL/API_KEY/API_SECRET to enable PTT
+                    Set VITE_LIVEKIT_URL to enable PTT
                   </p>
                 )}
                 {pttError && (
