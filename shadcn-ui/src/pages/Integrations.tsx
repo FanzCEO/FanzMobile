@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database, Video, Github } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { apiClient } from '@/lib/api/client';
 import type { IntegrationProvider } from '@/types/integration';
@@ -26,9 +27,11 @@ interface IntegrationConfig {
   price: string;
   fields: { name: string; label: string; placeholder: string; type?: string }[];
   configEndpoint?: string;
+  authEndpoint?: string; // OAuth endpoint
   badge?: 'free' | 'beta' | 'comingsoon' | 'premium';
   category?: 'Messaging' | 'Sync' | 'Productivity';
   comingSoon?: boolean;
+  oauth?: boolean;
 }
 
 const INTEGRATION_CONFIGS: IntegrationConfig[] = [
@@ -44,6 +47,16 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     configEndpoint: '/integrations/telegram/configure',
   },
   {
+    provider: 'whatsapp',
+    name: 'WhatsApp Business',
+    description: 'Connect via Meta Business - click to authorize with Facebook',
+    icon: <Phone className="h-8 w-8 text-green-500" />,
+    price: 'FREE tier',
+    fields: [],
+    authEndpoint: '/integrations/whatsapp/auth-url',
+    oauth: true,
+  },
+  {
     provider: 'telnyx',
     name: 'Telnyx SMS',
     description: 'Cheap SMS at $0.004/msg (75% cheaper than Twilio)',
@@ -55,19 +68,6 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
       { name: 'messaging_profile_id', label: 'Messaging Profile ID (optional)', placeholder: '12345678-1234-1234-1234-123456789012' },
     ],
     configEndpoint: '/integrations/telnyx/configure',
-  },
-  {
-    provider: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Free for first 1000 msgs/month via Meta Business API',
-    icon: <Phone className="h-8 w-8 text-green-500" />,
-    price: 'FREE tier',
-    fields: [
-      { name: 'phone_number_id', label: 'Phone Number ID', placeholder: 'Your WhatsApp Phone Number ID' },
-      { name: 'access_token', label: 'Access Token', placeholder: 'Your Meta Access Token', type: 'password' },
-      { name: 'verify_token', label: 'Webhook Verify Token', placeholder: 'A custom verify token' },
-    ],
-    configEndpoint: '/integrations/whatsapp/configure',
   },
   {
     provider: 'twilio',
@@ -83,12 +83,37 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     configEndpoint: '/integrations/twilio/configure',
   },
   {
+    provider: 'livekit',
+    name: 'LiveKit (Voice/Video)',
+    description: 'Real-time voice and video calls with your clients',
+    icon: <Video className="h-8 w-8 text-purple-500" />,
+    price: 'Pay-as-you-go',
+    fields: [
+      { name: 'api_key', label: 'API Key', placeholder: 'APIxxxxxxxxx', type: 'password' },
+      { name: 'api_secret', label: 'API Secret', placeholder: 'Your LiveKit API Secret', type: 'password' },
+      { name: 'url', label: 'LiveKit Server URL', placeholder: 'wss://your-project.livekit.cloud' },
+    ],
+    configEndpoint: '/integrations/livekit/configure',
+  },
+  {
+    provider: 'github',
+    name: 'GitHub',
+    description: 'Connect your GitHub account for repository access',
+    icon: <Github className="h-8 w-8 text-white" />,
+    price: 'FREE',
+    fields: [],
+    authEndpoint: '/integrations/github/auth-url',
+    oauth: true,
+  },
+  {
     provider: 'google_calendar',
     name: 'Google Calendar',
-    description: 'Sync events with Google Calendar',
+    description: 'Sync events with Google Calendar - click to sign in with Google',
     icon: <Calendar className="h-8 w-8 text-blue-500" />,
     price: 'FREE',
     fields: [],
+    authEndpoint: '/integrations/google/auth-url',
+    oauth: true,
   },
   {
     provider: 'outlook',
@@ -97,6 +122,8 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     icon: <Calendar className="h-8 w-8 text-sky-500" />,
     price: 'FREE',
     fields: [],
+    badge: 'comingsoon',
+    comingSoon: true,
   },
   {
     provider: 'slack',
@@ -157,14 +184,32 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const withApiPath = (path: string) => (path.startsWith('/api') ? path : `/api${path}`);
-const buildApiUrl = (path: string) => `${apiBase}${withApiPath(path)}`;
 
 export default function Integrations() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [configDialog, setConfigDialog] = useState<IntegrationConfig | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [sendDialog, setSendDialog] = useState<{ provider: string; type: string } | null>(null);
   const [sendData, setSendData] = useState({ to: '', body: '' });
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+
+  // Handle OAuth callback messages
+  useEffect(() => {
+    const connected = searchParams.get('connected');
+    const error = searchParams.get('error');
+
+    if (connected) {
+      toast.success(`${connected.charAt(0).toUpperCase() + connected.slice(1)} connected successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      setSearchParams({});
+    }
+
+    if (error) {
+      toast.error(`Failed to connect: ${error.replace(/_/g, ' ')}`);
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, queryClient]);
 
   const { data: integrations = [] } = useQuery({
     queryKey: ['integrations'],
@@ -204,17 +249,41 @@ export default function Integrations() {
     },
   });
 
-  const handleConnect = (config: IntegrationConfig) => {
+  const handleConnect = async (config: IntegrationConfig) => {
     if (config.comingSoon) {
       toast.info(`${config.name} is coming soon. Join the waitlist to get access first.`);
       return;
     }
-    if (config.fields.length === 0) {
-      if (config.provider === 'google_calendar') {
-        window.location.href = buildApiUrl('/integrations/google/auth-url');
-      } else {
-        toast.info('OAuth integration coming soon!');
+
+    // OAuth flow - redirect to provider
+    if (config.oauth && config.authEndpoint) {
+      setOauthLoading(config.provider);
+      try {
+        const response = await apiClient.get(withApiPath(config.authEndpoint));
+        const data = response.data;
+
+        if (data.auth_url) {
+          // Redirect to OAuth provider
+          window.location.href = data.auth_url;
+        } else if (data.instructions) {
+          // Show instructions (like for Telegram)
+          toast.info(data.instructions.join('\n'));
+          setOauthLoading(null);
+        } else {
+          toast.error('OAuth not configured for this integration');
+          setOauthLoading(null);
+        }
+      } catch (error: unknown) {
+        const axiosError = error as { response?: { data?: { detail?: string } }; message?: string };
+        toast.error(axiosError.response?.data?.detail || 'Failed to start OAuth flow');
+        setOauthLoading(null);
       }
+      return;
+    }
+
+    // Manual config flow
+    if (config.fields.length === 0) {
+      toast.info('No configuration needed for this integration');
     } else {
       setConfigDialog(config);
       setFormData({});
@@ -254,14 +323,13 @@ export default function Integrations() {
       setSendDialog(null);
       setSendData({ to: '', body: '' });
     } catch (error: unknown) {
-      // Use toToastText to safely extract error message from Axios/FastAPI responses
       const axiosError = error as { response?: { data?: unknown }; message?: string };
       const errorData = axiosError.response?.data ?? axiosError.message ?? error;
       toast.error(toToastText(errorData) || 'Failed to send message');
     }
   };
 
-  const isConnected = (provider: string) => integrations.some((i) => i.provider === provider);
+  const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.is_active);
   const getIntegration = (provider: string) => integrations.find((i) => i.provider === provider);
 
   return (
@@ -309,6 +377,7 @@ export default function Integrations() {
         {INTEGRATION_CONFIGS.map((config) => {
           const connected = isConnected(config.provider);
           const integration = getIntegration(config.provider);
+          const isLoading = oauthLoading === config.provider;
 
           return (
             <Card key={config.provider} className="glass-panel p-4 sm:p-6">
@@ -332,6 +401,9 @@ export default function Integrations() {
                       <DollarSign className="h-3 w-3 mr-1" />
                       {config.price}
                     </Badge>
+                    {config.oauth && (
+                      <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">OAuth</Badge>
+                    )}
                     {config.badge === 'beta' && (
                       <Badge variant="outline" className="text-xs text-amber-400 border-amber-400">Beta</Badge>
                     )}
@@ -357,7 +429,7 @@ export default function Integrations() {
                     {connected ? (
                       <>
                         <Button variant="outline" size="sm" className="text-xs" onClick={() => handleConnect(config)}>
-                          Configure
+                          {config.oauth ? 'Reconnect' : 'Configure'}
                         </Button>
                         <Button
                           variant="outline"
@@ -373,9 +445,25 @@ export default function Integrations() {
                         Coming soon
                       </Button>
                     ) : (
-                      <Button size="sm" className="gradient-primary text-xs" onClick={() => handleConnect(config)}>
-                        <Plug className="h-4 w-4 mr-2" />
-                        Connect
+                      <Button
+                        size="sm"
+                        className="gradient-primary text-xs"
+                        onClick={() => handleConnect(config)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>Loading...</>
+                        ) : config.oauth ? (
+                          <>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Sign in with {config.name.split(' ')[0]}
+                          </>
+                        ) : (
+                          <>
+                            <Plug className="h-4 w-4 mr-2" />
+                            Connect
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
@@ -405,14 +493,14 @@ export default function Integrations() {
 
         <Card className="glass-panel p-4 sm:p-6 border-green-500/50">
           <div className="flex items-start gap-3 sm:gap-4">
-            <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 flex-shrink-0" />
+            <Phone className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
             <div className="min-w-0">
-              <h3 className="font-bold text-base sm:text-lg mb-2">Setting Up Telnyx (Cheap)</h3>
+              <h3 className="font-bold text-base sm:text-lg mb-2">WhatsApp Business (OAuth)</h3>
               <ol className="text-xs sm:text-sm text-muted-foreground space-y-1 sm:space-y-2 list-decimal list-inside">
-                <li>Sign up at <a href="https://telnyx.com" target="_blank" rel="noopener" className="text-green-400 hover:underline">telnyx.com</a></li>
-                <li>Get $10 free credit</li>
-                <li>Buy a phone number (~$1/mo)</li>
-                <li>Create API key in Portal</li>
+                <li>Click "Sign in with WhatsApp"</li>
+                <li>Authorize with your Facebook account</li>
+                <li>Select your WhatsApp Business account</li>
+                <li>You'll be redirected back when done</li>
               </ol>
             </div>
           </div>

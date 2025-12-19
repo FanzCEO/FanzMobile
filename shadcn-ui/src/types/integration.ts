@@ -12,7 +12,9 @@ export type IntegrationProvider =
   | 'imap'
   | 'gmail'
   | 'webhook'
-  | 'notion';
+  | 'notion'
+  | 'livekit'
+  | 'github';
 
 export interface Integration {
   id: string;
