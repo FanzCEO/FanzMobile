@@ -8,6 +8,7 @@ import { Sparkles, Copy, RefreshCw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api/client';
 
 interface AIMessageDraftProps {
   contactName: string;
@@ -15,7 +16,7 @@ interface AIMessageDraftProps {
   onSelect?: (message: string) => void;
 }
 
-const API_BASE = '/api/ai';
+const API_PATH = '/api/ai';
 
 const TONES = [
   { id: 'friendly', label: 'Friendly', emoji: '😊' },
@@ -44,19 +45,13 @@ export function AIMessageDraft({ contactName, context = '', onSelect }: AIMessag
   const generateDraft = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/draft-message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_name: contactName,
-          context: contextInput || `Sending a ${messageType} message`,
-          tone,
-          message_type: messageType
-        })
+      const response = await apiClient.post(`${API_PATH}/draft-message`, {
+        contact_name: contactName,
+        context: contextInput || `Sending a ${messageType} message`,
+        tone,
+        message_type: messageType
       });
-
-      const data = await response.json();
-      setDraft(data.draft);
+      setDraft(response.data.draft);
     } catch (error) {
       console.error('Failed to generate draft:', error);
       setDraft('Failed to generate message. Please try again.');

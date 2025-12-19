@@ -8,6 +8,7 @@ import { Send, Bot, User, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api/client';
 
 interface Message {
   role: 'user' | 'companion';
@@ -33,7 +34,7 @@ interface AIChatProps {
   onClose?: () => void;
 }
 
-const API_BASE = '/api/ai';
+const API_PATH = '/api/ai';
 
 export function AIChat({
   userId = 'user1',
@@ -70,9 +71,8 @@ export function AIChat({
 
   const fetchCompanions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/companions`);
-      const data = await response.json();
-      setCompanions(data.companions || []);
+      const response = await apiClient.get(`${API_PATH}/companions`);
+      setCompanions(response.data.companions || []);
     } catch (error) {
       console.error('Failed to fetch companions:', error);
     }
@@ -92,18 +92,14 @@ export function AIChat({
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          companion_id: selectedCompanion,
-          message: input,
-          model,
-        })
+      const response = await apiClient.post(`${API_PATH}/chat`, {
+        user_id: userId,
+        companion_id: selectedCompanion,
+        message: input,
+        model,
       });
 
-      const data = await response.json();
+      const data = response.data;
 
       const companionMessage: Message = {
         role: 'companion',
@@ -127,9 +123,7 @@ export function AIChat({
 
   const clearChat = async () => {
     try {
-      await fetch(`${API_BASE}/conversation/${userId}/${selectedCompanion}`, {
-        method: 'DELETE'
-      });
+      await apiClient.delete(`${API_PATH}/conversation/${userId}/${selectedCompanion}`);
       setMessages([]);
     } catch (error) {
       console.error('Failed to clear chat:', error);
