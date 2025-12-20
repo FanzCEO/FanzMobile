@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, ShieldCheck, Loader2, CheckCircle, Gauge } from 'lucide-react';
+import { CreditCard, ShieldCheck, Loader2, CheckCircle, Gauge, Star, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { billingApi, type Plan, type BillingPolicy } from '@/lib/api/billing';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 export default function Billing() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [policy, setPolicy] = useState<BillingPolicy | null>(null);
@@ -38,7 +39,7 @@ export default function Billing() {
   }, []);
 
   const handleCheckout = async (planId: string) => {
-    setLoading(true);
+    setLoading(planId);
     try {
       const session = await billingApi.createCheckoutSession(planId);
       if (session.checkout_url) {
@@ -49,18 +50,13 @@ export default function Billing() {
     } catch (error) {
       toast.error('Unable to start checkout');
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
-  const formatPrice = (amountCents: number, interval: string) => {
-    const dollars = (amountCents / 100).toFixed(2);
-    return `$${dollars}/${interval}`;
-  };
-
   const aiUsageText = policy
-    ? `${policy.ai_usage.free_units.toLocaleString()} ${policy.ai_usage.unit} free, then $${(policy.ai_usage.overage_cents_per_unit / 100).toFixed(2)} per ${policy.ai_usage.unit}`
-    : 'Small free allowance, then overage billed to consumer';
+    ? `${policy.ai_usage.free_units.toLocaleString()} ${policy.ai_usage.unit} free per period, then $${(policy.ai_usage.overage_cents_per_unit / 100).toFixed(3)} per ${policy.ai_usage.unit}`
+    : 'Free AI credits included, then pay-as-you-go for additional usage';
 
   return (
     <div className="space-y-6">
@@ -69,9 +65,9 @@ export default function Billing() {
           <CreditCard className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gradient">Billing & Access</h1>
+          <h1 className="text-3xl font-bold text-gradient">Membership Plans</h1>
           <p className="text-muted-foreground">
-            Subscription-based access. End users pay; creators stay fee-free.
+            Choose the plan that works best for you
           </p>
         </div>
       </div>
@@ -91,42 +87,79 @@ export default function Billing() {
           <CheckCircle className="h-5 w-5 text-blue-500" />
           <div>
             <p className="font-semibold">Subscription active</p>
-            <p className="text-sm text-muted-foreground">You already have access.</p>
+            <p className="text-sm text-muted-foreground">You already have full access.</p>
           </div>
         </Card>
       )}
 
       {fetching ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Loading billing plans…</span>
+        <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading plans...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((plan) => (
-            <Card key={plan.id} className="glass-panel p-6 space-y-3 border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Membership billed to end consumer
-                  </p>
+            <Card
+              key={plan.id}
+              className={cn(
+                'glass-panel p-6 space-y-4 relative overflow-hidden',
+                plan.popular && 'border-primary/50 ring-2 ring-primary/20'
+              )}
+            >
+              {plan.popular && (
+                <div className="absolute top-0 right-0">
+                  <Badge className="rounded-none rounded-bl-lg gradient-primary">
+                    <Star className="h-3 w-3 mr-1" />
+                    Popular
+                  </Badge>
                 </div>
-                <Badge variant="outline">{formatPrice(plan.amount_cents, plan.interval)}</Badge>
+              )}
+
+              <div>
+                <h3 className="text-xl font-bold">{plan.name}</h3>
+                {plan.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+                )}
               </div>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Weekly access starting at $5.99 (consumer billed)</li>
-                <li>• PTT/comms, workflows, and AI tools</li>
-                <li>• Platform fees charged to consumer, creators stay fee-free</li>
-                <li>• AI usage over free allowance billed as overage</li>
+
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold">
+                  ${((plan.amount_cents || 0) / 100).toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">/{plan.interval || 'week'}</span>
+              </div>
+
+              <ul className="space-y-2 flex-1">
+                {(plan.features || []).map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">{feature}</span>
+                  </li>
+                ))}
               </ul>
+
               <Button
-                className="w-full gradient-primary"
-                disabled={loading || isComped || hasSubscription}
+                className={cn(
+                  'w-full',
+                  plan.popular ? 'gradient-primary' : ''
+                )}
+                variant={plan.popular ? 'default' : 'outline'}
+                disabled={loading !== null || isComped || hasSubscription}
                 onClick={() => handleCheckout(plan.id)}
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {isComped ? 'Access granted' : hasSubscription ? 'Already subscribed' : 'Subscribe'}
+                {loading === plan.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Processing...
+                  </>
+                ) : isComped ? (
+                  'Access granted'
+                ) : hasSubscription ? (
+                  'Already subscribed'
+                ) : (
+                  'Subscribe'
+                )}
               </Button>
             </Card>
           ))}
@@ -136,13 +169,11 @@ export default function Billing() {
       <Card className="glass-panel p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Gauge className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">AI usage & fees</h3>
+          <h3 className="font-semibold">AI Usage & Credits</h3>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {aiUsageText}
-        </p>
+        <p className="text-sm text-muted-foreground">{aiUsageText}</p>
         {policy && (
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2 text-xs">
             {Object.entries(policy.fees).map(([type, config]) => (
               <Badge key={type} variant="secondary">
                 {type}: {config.percent}% + ${(config.flat_cents / 100).toFixed(2)}
@@ -150,6 +181,24 @@ export default function Billing() {
             ))}
           </div>
         )}
+      </Card>
+
+      <Card className="glass-panel p-4 space-y-3">
+        <h3 className="font-semibold">Billing FAQ</h3>
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div>
+            <p className="font-medium text-foreground">How does billing work?</p>
+            <p>Your subscription renews automatically. Cancel anytime from settings.</p>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">What payment methods are accepted?</p>
+            <p>We accept all major credit cards, PayPal, and cryptocurrency.</p>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Can I upgrade or downgrade?</p>
+            <p>Yes, changes take effect at your next billing cycle.</p>
+          </div>
+        </div>
       </Card>
     </div>
   );

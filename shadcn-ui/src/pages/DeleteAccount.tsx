@@ -27,7 +27,7 @@ export default function DeleteAccount() {
       navigate('/login');
     },
     onError: () => {
-      toast.error('Could not submit deletion request. Please email privacy@wickedcrm.com.');
+      toast.error('Could not submit deletion request. Please email Support@FanzUnlimited.com.');
     },
   });
 
@@ -122,8 +122,8 @@ export default function DeleteAccount() {
               </p>
               <ol className="list-decimal pl-5 space-y-2">
                 <li>Send an email from your account address to{' '}
-                  <a className="text-primary underline" href="mailto:privacy@wickedcrm.com?subject=Delete%20Account%20Request">
-                    privacy@wickedcrm.com
+                  <a className="text-primary underline" href="mailto:Support@FanzUnlimited.com?subject=Delete%20Account%20Request">
+                    Support@FanzUnlimited.com
                   </a>{' '}
                   with the subject “Delete Account Request”.</li>
                 <li>Include: your full name, the email on your account, and confirmation that you want your account and data deleted.</li>
@@ -159,12 +159,8 @@ export default function DeleteAccount() {
             <h2 className="text-xl font-semibold">Need help?</h2>
             <p className="text-muted-foreground">
               Contact{' '}
-              <a className="text-primary underline" href="mailto:privacy@wickedcrm.com">
-                privacy@wickedcrm.com
-              </a>{' '}
-              or{' '}
-              <a className="text-primary underline" href="mailto:support@wickedcrm.com">
-                support@wickedcrm.com
+              <a className="text-primary underline" href="mailto:Support@FanzUnlimited.com">
+                Support@FanzUnlimited.com
               </a>{' '}
               and we will assist you.
             </p>

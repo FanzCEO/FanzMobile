@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Radio, Send, Phone, MessageSquare, Mic, MicOff, AlertTriangle, Bot, Plug, MapPin, Activity, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ const CONNECTORS = [
 
 export default function Communications() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('thread-1');
   const [reply, setReply] = useState('');
@@ -434,7 +436,7 @@ export default function Communications() {
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full text-sm">Manage integrations</Button>
+            <Button variant="outline" className="w-full text-sm" onClick={() => navigate('/integrations')}>Manage integrations</Button>
           </Card>
 
           <Card className="glass-panel p-4 space-y-3">
@@ -456,7 +458,7 @@ export default function Communications() {
                 <Badge variant="secondary">18</Badge>
               </div>
             </div>
-            <Button variant="outline" className="w-full text-sm">
+            <Button variant="outline" className="w-full text-sm" onClick={() => navigate('/dispatch')}>
               <Activity className="h-4 w-4 mr-2" />
               Open dispatch board
             </Button>

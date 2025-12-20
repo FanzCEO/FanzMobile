@@ -20,6 +20,45 @@ export interface PaymentProviderConfig {
   created_at?: string;
 }
 
+export interface ThemeSettings {
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  font_family: string;
+  border_radius: string;
+  logo_url?: string;
+}
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  full_name?: string;
+  role?: string;
+  comped: boolean;
+  active_subscription: boolean;
+  subscription_plan?: string;
+  created_at?: string;
+  last_login?: string;
+  is_active: boolean;
+}
+
+export interface UpdateUserRequest {
+  role?: string;
+  comped?: boolean;
+  active_subscription?: boolean;
+  subscription_plan?: string;
+  is_active?: boolean;
+}
+
+export interface SystemStats {
+  total_users: number;
+  subscribers: number;
+  comped_users: number;
+  total_contacts: number;
+  total_messages: number;
+}
+
 const adminHeaders = () => {
   const key = import.meta.env.VITE_ADMIN_API_KEY;
   return key ? { 'x-admin-key': key } : undefined;
@@ -50,6 +89,60 @@ export const adminApi = {
       { config },
       { headers: adminHeaders() }
     );
+    return res.data;
+  },
+
+  // Theme settings
+  getTheme: async (): Promise<ThemeSettings> => {
+    const res = await apiClient.get('/api/admin/theme');
+    return res.data;
+  },
+  updateTheme: async (settings: ThemeSettings) => {
+    const res = await apiClient.put('/api/admin/theme', settings, {
+      headers: adminHeaders(),
+    });
+    return res.data;
+  },
+
+  // User management
+  listUsers: async (params?: { limit?: number; offset?: number; search?: string }): Promise<UserSummary[]> => {
+    const res = await apiClient.get('/api/admin/users', {
+      headers: adminHeaders(),
+      params,
+    });
+    return res.data;
+  },
+  getUserCount: async (search?: string): Promise<{ total: number }> => {
+    const res = await apiClient.get('/api/admin/users/count', {
+      headers: adminHeaders(),
+      params: search ? { search } : undefined,
+    });
+    return res.data;
+  },
+  getUser: async (userId: string): Promise<UserSummary> => {
+    const res = await apiClient.get(`/api/admin/users/${userId}`, {
+      headers: adminHeaders(),
+    });
+    return res.data;
+  },
+  updateUser: async (userId: string, data: UpdateUserRequest) => {
+    const res = await apiClient.patch(`/api/admin/users/${userId}`, data, {
+      headers: adminHeaders(),
+    });
+    return res.data;
+  },
+  deleteUser: async (userId: string) => {
+    const res = await apiClient.delete(`/api/admin/users/${userId}`, {
+      headers: adminHeaders(),
+    });
+    return res.data;
+  },
+
+  // System stats
+  getStats: async (): Promise<SystemStats> => {
+    const res = await apiClient.get('/api/admin/stats', {
+      headers: adminHeaders(),
+    });
     return res.data;
   },
 };

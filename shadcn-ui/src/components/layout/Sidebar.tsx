@@ -17,7 +17,10 @@ import {
   Bot,
   Radio,
   CreditCard,
-  Shield
+  Shield,
+  Coins,
+  ShoppingCart,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,12 +40,15 @@ const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Comms', href: '/comms', icon: Radio },
+  { name: 'Dispatch', href: '/dispatch', icon: MapPin },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Workflows', href: '/workflows', icon: Workflow },
   { name: 'Integrations', href: '/integrations', icon: Plug },
   { name: 'Import', href: '/import', icon: Upload },
   { name: 'AI Assistant', href: '/ai', icon: Bot },
+  { name: 'AI Credits', href: '/credits', icon: Coins },
+  { name: 'Shop', href: '/cart', icon: ShoppingCart },
   { name: 'Billing', href: '/billing', icon: CreditCard },
 ];
 
@@ -130,8 +136,8 @@ export function Sidebar() {
                   <span className="text-xl font-bold">AI</span>
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gradient">WickedCRM</h1>
-                  <p className="text-xs text-muted-foreground">AI Assistant</p>
+                  <h1 className="text-lg font-bold text-gradient">Wicked</h1>
+                  <p className="text-xs text-muted-foreground">Creator AI Assistant</p>
                 </div>
               </div>
             )}

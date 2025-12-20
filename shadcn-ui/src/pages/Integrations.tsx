@@ -172,15 +172,21 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     comingSoon: true,
   },
   {
-    provider: 'gmail',
-    name: 'Gmail / IMAP',
-    description: 'Sync email threads (read-only to start)',
+    provider: 'email',
+    name: 'Email (SMTP/IMAP)',
+    description: 'Send and receive emails via your SMTP server or Gmail',
     icon: <Mail className="h-8 w-8 text-red-400" />,
-    price: 'Beta soon',
-    fields: [],
-    badge: 'beta',
+    price: 'FREE',
+    fields: [
+      { name: 'smtp_host', label: 'SMTP Host', placeholder: 'smtp.gmail.com' },
+      { name: 'smtp_port', label: 'SMTP Port', placeholder: '587' },
+      { name: 'smtp_username', label: 'SMTP Username', placeholder: 'your@gmail.com' },
+      { name: 'smtp_password', label: 'SMTP Password / App Password', placeholder: 'Your password', type: 'password' },
+      { name: 'from_email', label: 'From Email', placeholder: 'your@gmail.com' },
+      { name: 'from_name', label: 'From Name', placeholder: 'Your Name' },
+    ],
+    configEndpoint: '/email/config',
     category: 'Messaging',
-    comingSoon: true,
   },
   {
     provider: 'webhook',
@@ -369,7 +375,7 @@ export default function Integrations() {
       </div>
 
       {/* Quick Send Buttons */}
-      {(isConnected('telegram') || isConnected('telnyx') || isConnected('twilio') || isConnected('whatsapp')) && (
+      {(isConnected('telegram') || isConnected('telnyx') || isConnected('twilio') || isConnected('whatsapp') || isConnected('email')) && (
         <Card className="glass-panel p-4">
           <div className="flex flex-wrap gap-2">
             {isConnected('telegram') && (
@@ -390,6 +396,11 @@ export default function Integrations() {
             {isConnected('twilio') && !isConnected('telnyx') && (
               <Button onClick={() => setSendDialog({ provider: 'twilio', type: 'SMS (Twilio)' })} variant="outline" size="sm">
                 <MessageSquare className="h-4 w-4 mr-2 text-red-500" /> Send SMS
+              </Button>
+            )}
+            {isConnected('email') && (
+              <Button onClick={() => setSendDialog({ provider: 'email', type: 'Email' })} variant="outline" size="sm">
+                <Mail className="h-4 w-4 mr-2 text-red-400" /> Send Email
               </Button>
             )}
           </div>

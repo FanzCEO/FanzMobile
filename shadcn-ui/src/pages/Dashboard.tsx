@@ -33,10 +33,10 @@ export default function Dashboard() {
       {/* Header */}
       <div className="text-center px-2">
         <h1 className="text-2xl sm:text-4xl font-bold mb-2">
-          Welcome to <span className="text-gradient">WickedCRM</span>
+          Welcome to <span className="text-gradient">Wicked</span>
         </h1>
         <p className="text-muted-foreground text-sm sm:text-lg">
-          Your intelligent AI assistant
+          The AI-Powered CRM for Creators & Entertainers
         </p>
       </div>
 

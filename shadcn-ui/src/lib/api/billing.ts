@@ -16,10 +16,25 @@ export interface CheckoutSessionResponse {
 export interface Plan {
   id: string;
   name: string;
+  description?: string;
   price: string;
   amount_cents?: number;
   currency?: string;
   interval?: string;
+  features?: string[];
+  popular?: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  plan_id?: string;
+  plan_name?: string;
+  amount_cents?: number;
+  interval?: string;
+  processor: string;
+  status: string;
+  started_at?: string;
+  expires_at?: string;
 }
 
 export interface AIUsagePolicy {
@@ -61,10 +76,17 @@ export const billingApi = {
     return res.data;
   },
 
-  createCheckoutSession: async (planId: string): Promise<CheckoutSessionResponse> => {
+  createCheckoutSession: async (planId: string, processor: string = 'ccbill'): Promise<CheckoutSessionResponse> => {
     const res = await apiClient.post<CheckoutSessionResponse>('/api/billing/checkout', {
       plan_id: planId,
+      processor,
     });
+    return res.data;
+  },
+
+  getSubscription: async (): Promise<Subscription | null> => {
+    const res = await apiClient.get<Subscription>('/api/billing/subscription');
+    if (res.data?.status === 'none') return null;
     return res.data;
   },
 };

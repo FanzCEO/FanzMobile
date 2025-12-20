@@ -54,7 +54,7 @@ export default function Login() {
             <span className="text-2xl font-bold">AI</span>
           </div>
           <h1 className="text-3xl font-bold text-gradient mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to your CRM Escort account</p>
+          <p className="text-muted-foreground">Sign in to your Wicked CRM account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

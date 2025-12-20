@@ -40,7 +40,7 @@ export function TopBar() {
 
       {/* Mobile: just show title */}
       <div className="sm:hidden ml-12">
-        <h1 className="text-lg font-bold text-gradient">WickedCRM</h1>
+        <h1 className="text-lg font-bold text-gradient">Wicked</h1>
       </div>
 
       {/* Actions */}

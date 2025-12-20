@@ -151,7 +151,7 @@ export default function TermsOfService() {
                 For questions about these Terms, contact us at:
               </p>
               <p className="text-muted-foreground mt-2">
-                Email: legal@wickedcrm.com<br />
+                Email: Support@FanzUnlimited.com<br />
                 Address: Fanz LLC, United States
               </p>
             </section>

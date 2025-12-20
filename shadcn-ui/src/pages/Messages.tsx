@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, Filter } from 'lucide-react';
+import { Send, Filter, Paperclip, X, Image, FileText, Video, Music } from 'lucide-react';
 import { messagesApi } from '@/lib/api/messages';
+import { uploadsApi } from '@/lib/api/uploads';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,9 +11,26 @@ import { formatRelativeTime } from '@/lib/utils/date';
 import { toast } from '@/components/ui/sonner';
 import type { MessageChannel, MessageDirection } from '@/types/message';
 
+interface Attachment {
+  file: File;
+  preview?: string;
+  uploading?: boolean;
+  uploaded?: boolean;
+  url?: string;
+}
+
+const getFileIcon = (type: string) => {
+  if (type.startsWith('image/')) return Image;
+  if (type.startsWith('video/')) return Video;
+  if (type.startsWith('audio/')) return Music;
+  return FileText;
+};
+
 export default function Messages() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [composeChannel, setComposeChannel] = useState<MessageChannel>('sms');
   const [filterChannel, setFilterChannel] = useState<MessageChannel | 'all'>('all');
   const [filterDirection, setFilterDirection] = useState<MessageDirection | 'all'>('all');
@@ -32,6 +50,7 @@ export default function Messages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages'], exact: false });
       setNewMessage('');
+      setAttachments([]);
       toast.success('Message sent successfully');
     },
     onError: () => {
@@ -39,10 +58,71 @@ export default function Messages() {
     },
   });
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newAttachments: Attachment[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+      newAttachments.push({ file, preview });
+    }
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => {
+      const updated = [...prev];
+      if (updated[index].preview) URL.revokeObjectURL(updated[index].preview!);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() && attachments.length === 0) return;
+
+    // Upload attachments first
+    const uploadedUrls: string[] = [];
+    for (let i = 0; i < attachments.length; i++) {
+      if (!attachments[i].uploaded) {
+        setAttachments((prev) => {
+          const updated = [...prev];
+          updated[i] = { ...updated[i], uploading: true };
+          return updated;
+        });
+        try {
+          const result = await uploadsApi.upload(attachments[i].file, 'message');
+          uploadedUrls.push(uploadsApi.getFileUrl(result.id));
+          setAttachments((prev) => {
+            const updated = [...prev];
+            updated[i] = { ...updated[i], uploading: false, uploaded: true, url: uploadsApi.getFileUrl(result.id) };
+            return updated;
+          });
+        } catch {
+          toast.error(`Failed to upload ${attachments[i].file.name}`);
+          setAttachments((prev) => {
+            const updated = [...prev];
+            updated[i] = { ...updated[i], uploading: false };
+            return updated;
+          });
+          return;
+        }
+      } else if (attachments[i].url) {
+        uploadedUrls.push(attachments[i].url!);
+      }
+    }
+
+    // Include attachment URLs in message body
+    let messageBody = newMessage;
+    if (uploadedUrls.length > 0) {
+      messageBody += (messageBody ? '\n\n' : '') + 'Attachments:\n' + uploadedUrls.join('\n');
+    }
+
     createMessageMutation.mutate({
-      body: newMessage,
+      body: messageBody,
       channel: composeChannel,
       direction: 'outbound',
     });
@@ -115,10 +195,71 @@ export default function Messages() {
             rows={3}
             className="resize-none"
           />
-          <div className="flex justify-end">
+
+          {/* Attachment Preview */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-2 bg-white/5 rounded-lg">
+              {attachments.map((attachment, index) => {
+                const FileIcon = getFileIcon(attachment.file.type);
+                return (
+                  <div
+                    key={index}
+                    className="relative group flex items-center gap-2 p-2 bg-white/10 rounded-lg"
+                  >
+                    {attachment.preview ? (
+                      <img
+                        src={attachment.preview}
+                        alt={attachment.file.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 flex items-center justify-center bg-primary/20 rounded">
+                        <FileIcon className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
+                    <div className="max-w-[120px]">
+                      <p className="text-xs truncate">{attachment.file.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {(attachment.file.size / 1024).toFixed(1)} KB
+                        {attachment.uploading && ' - Uploading...'}
+                        {attachment.uploaded && ' - Ready'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeAttachment(index)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.csv"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="message-attachment"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="h-4 w-4 mr-2" />
+                Attach
+              </Button>
+            </div>
             <Button
               onClick={handleSendMessage}
-              disabled={!newMessage.trim() || createMessageMutation.isPending}
+              disabled={(!newMessage.trim() && attachments.length === 0) || createMessageMutation.isPending}
               className="gradient-primary"
             >
               <Send className="h-4 w-4 mr-2" />

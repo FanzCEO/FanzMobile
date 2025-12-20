@@ -25,6 +25,9 @@ import DeleteAccount from './pages/DeleteAccount';
 import Communications from './pages/Communications';
 import Billing from './pages/Billing';
 import AdminConsole from './pages/AdminConsole';
+import Credits from './pages/Credits';
+import Cart from './pages/Cart';
+import Dispatch from './pages/Dispatch';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +108,9 @@ const App = () => (
                 <Route path="/import" element={<Import />} />
                 <Route path="/ai" element={<AIAssistant />} />
                 <Route path="/billing" element={<Billing />} />
+                <Route path="/credits" element={<Credits />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/dispatch" element={<Dispatch />} />
                 <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
