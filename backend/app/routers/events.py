@@ -1,13 +1,17 @@
 """
 WickedCRM Events Router
-Calendar event management.
+Calendar event management with database persistence.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends, Header
 from pydantic import BaseModel
 from typing import Optional, List, Literal
-from datetime import datetime, timedelta
+from datetime import datetime
+from sqlalchemy.orm import Session
 import uuid
+
+from app.database import get_db
+from app.models.event import Event as EventModel
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
 
@@ -17,7 +21,7 @@ router = APIRouter(prefix="/api/events", tags=["Events"])
 EventStatus = Literal["scheduled", "confirmed", "completed", "cancelled"]
 
 
-class Event(BaseModel):
+class EventResponse(BaseModel):
     id: str
     user_id: str
     contact_id: Optional[str] = None
@@ -28,8 +32,11 @@ class Event(BaseModel):
     location: Optional[str] = None
     status: EventStatus = "scheduled"
     reminder_sent: bool = False
-    created_at: str
-    updated_at: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class CreateEventRequest(BaseModel):
@@ -42,50 +49,47 @@ class CreateEventRequest(BaseModel):
     status: EventStatus = "scheduled"
 
 
-# ============== IN-MEMORY STORAGE ==============
+class UpdateEventRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    location: Optional[str] = None
+    contact_id: Optional[str] = None
+    status: Optional[EventStatus] = None
 
-# Generate some sample events
-now = datetime.now()
-events_db: List[Event] = [
-    Event(
-        id="event-1",
-        user_id="user-1",
-        contact_id="contact-1",
-        title="Video call with Sarah",
-        description="Discuss exclusive content schedule",
-        start_time=(now + timedelta(days=1, hours=2)).isoformat(),
-        end_time=(now + timedelta(days=1, hours=3)).isoformat(),
-        location="Zoom",
-        status="confirmed",
-        created_at=now.isoformat(),
-        updated_at=now.isoformat()
-    ),
-    Event(
-        id="event-2",
-        user_id="user-1",
-        contact_id="contact-3",
-        title="Collab planning with Alex",
-        description="Plan upcoming collaboration",
-        start_time=(now + timedelta(days=3)).isoformat(),
-        end_time=(now + timedelta(days=3, hours=1)).isoformat(),
-        location="Coffee Shop",
-        status="scheduled",
-        created_at=now.isoformat(),
-        updated_at=now.isoformat()
-    ),
-    Event(
-        id="event-3",
-        user_id="user-1",
-        title="Content creation day",
-        description="Batch create content for the week",
-        start_time=(now + timedelta(days=5)).isoformat(),
-        end_time=(now + timedelta(days=5, hours=4)).isoformat(),
-        location="Home studio",
-        status="scheduled",
-        created_at=now.isoformat(),
-        updated_at=now.isoformat()
-    ),
-]
+
+# ============== HELPER FUNCTIONS ==============
+
+def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> str:
+    """Extract user ID from JWT token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return "00000000-0000-0000-0000-000000000001"
+
+    try:
+        import jwt
+        from app.config import settings
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        user_id = payload.get("sub") or payload.get("user_id")
+        if not user_id:
+            return "00000000-0000-0000-0000-000000000001"
+        return user_id
+    except:
+        return "00000000-0000-0000-0000-000000000001"
+
+
+def parse_datetime(dt_str: str) -> datetime:
+    """Parse datetime string to datetime object."""
+    try:
+        # Try ISO format first
+        return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+    except:
+        try:
+            # Try common format
+            return datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
+        except:
+            return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
 
 
 # ============== ROUTES ==============
@@ -96,103 +100,212 @@ async def get_events(
     limit: int = Query(100, ge=1, le=500),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    status: Optional[str] = None
-) -> List[Event]:
+    status: Optional[str] = None,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> List[dict]:
     """Get all events with optional date filtering."""
-    filtered = events_db
+    query = db.query(EventModel).filter(EventModel.user_id == user_id)
 
     if start_date:
-        filtered = [e for e in filtered if e.start_time >= start_date]
+        try:
+            start_dt = parse_datetime(start_date)
+            query = query.filter(EventModel.start_time >= start_dt)
+        except:
+            pass
 
     if end_date:
-        filtered = [e for e in filtered if e.start_time <= end_date]
+        try:
+            end_dt = parse_datetime(end_date)
+            query = query.filter(EventModel.start_time <= end_dt)
+        except:
+            pass
 
     if status:
-        filtered = [e for e in filtered if e.status == status]
+        query = query.filter(EventModel.status == status)
 
-    # Sort by start_time
-    filtered.sort(key=lambda e: e.start_time)
-
-    return filtered[skip:skip + limit]
+    events = query.order_by(EventModel.start_time).offset(skip).limit(limit).all()
+    return [e.to_dict() for e in events]
 
 
 @router.get("/{event_id}")
-async def get_event(event_id: str) -> Event:
+async def get_event(
+    event_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Get a specific event."""
-    for event in events_db:
-        if event.id == event_id:
-            return event
-    raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid event ID format")
+
+    event = db.query(EventModel).filter(
+        EventModel.id == event_uuid,
+        EventModel.user_id == user_id
+    ).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return event.to_dict()
 
 
 @router.post("")
-async def create_event(request: CreateEventRequest) -> Event:
+async def create_event(
+    request: CreateEventRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Create a new event."""
-    now = datetime.now().isoformat()
-    new_event = Event(
-        id=f"event-{uuid.uuid4().hex[:8]}",
-        user_id="user-1",
-        contact_id=request.contact_id,
+    contact_uuid = None
+    if request.contact_id:
+        try:
+            contact_uuid = uuid.UUID(request.contact_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid contact ID format")
+
+    new_event = EventModel(
+        user_id=user_id,
+        contact_id=contact_uuid,
         title=request.title,
         description=request.description,
-        start_time=request.start_time,
-        end_time=request.end_time,
+        start_time=parse_datetime(request.start_time),
+        end_time=parse_datetime(request.end_time),
         location=request.location,
         status=request.status,
-        created_at=now,
-        updated_at=now
     )
 
-    events_db.append(new_event)
-    return new_event
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+
+    return new_event.to_dict()
 
 
 @router.put("/{event_id}")
-async def update_event(event_id: str, request: CreateEventRequest) -> Event:
+async def update_event(
+    event_id: str,
+    request: UpdateEventRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Update an event."""
-    for event in events_db:
-        if event.id == event_id:
-            event.title = request.title
-            event.description = request.description
-            event.start_time = request.start_time
-            event.end_time = request.end_time
-            event.location = request.location
-            event.contact_id = request.contact_id
-            event.status = request.status
-            event.updated_at = datetime.now().isoformat()
-            return event
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid event ID format")
 
-    raise HTTPException(status_code=404, detail="Event not found")
+    event = db.query(EventModel).filter(
+        EventModel.id == event_uuid,
+        EventModel.user_id == user_id
+    ).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if request.title is not None:
+        event.title = request.title
+    if request.description is not None:
+        event.description = request.description
+    if request.start_time is not None:
+        event.start_time = parse_datetime(request.start_time)
+    if request.end_time is not None:
+        event.end_time = parse_datetime(request.end_time)
+    if request.location is not None:
+        event.location = request.location
+    if request.contact_id is not None:
+        try:
+            event.contact_id = uuid.UUID(request.contact_id) if request.contact_id else None
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid contact ID format")
+    if request.status is not None:
+        event.status = request.status
+
+    event.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(event)
+
+    return event.to_dict()
 
 
 @router.delete("/{event_id}")
-async def delete_event(event_id: str):
+async def delete_event(
+    event_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
     """Delete an event."""
-    global events_db
-    for i, event in enumerate(events_db):
-        if event.id == event_id:
-            events_db.pop(i)
-            return {"status": "deleted", "id": event_id}
-    raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid event ID format")
+
+    event = db.query(EventModel).filter(
+        EventModel.id == event_uuid,
+        EventModel.user_id == user_id
+    ).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    db.delete(event)
+    db.commit()
+
+    return {"status": "deleted", "id": event_id}
 
 
 @router.post("/{event_id}/confirm")
-async def confirm_event(event_id: str) -> Event:
+async def confirm_event(
+    event_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Confirm an event."""
-    for event in events_db:
-        if event.id == event_id:
-            event.status = "confirmed"
-            event.updated_at = datetime.now().isoformat()
-            return event
-    raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid event ID format")
+
+    event = db.query(EventModel).filter(
+        EventModel.id == event_uuid,
+        EventModel.user_id == user_id
+    ).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event.status = "confirmed"
+    event.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(event)
+
+    return event.to_dict()
 
 
 @router.post("/{event_id}/cancel")
-async def cancel_event(event_id: str) -> Event:
+async def cancel_event(
+    event_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Cancel an event."""
-    for event in events_db:
-        if event.id == event_id:
-            event.status = "cancelled"
-            event.updated_at = datetime.now().isoformat()
-            return event
-    raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid event ID format")
+
+    event = db.query(EventModel).filter(
+        EventModel.id == event_uuid,
+        EventModel.user_id == user_id
+    ).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event.status = "cancelled"
+    event.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(event)
+
+    return event.to_dict()

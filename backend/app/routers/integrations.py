@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/integrations", tags=["Integrations"])
 # ============== DATA MODELS ==============
 
 IntegrationProvider = Literal[
-    "google_calendar", "outlook", "twilio", "telnyx", "telegram", "rm_chat", "whatsapp"
+    "google_calendar", "outlook", "twilio", "telnyx", "telegram", "rm_chat", "whatsapp", "sendgrid"
 ]
 
 
@@ -88,6 +88,29 @@ provider_configs: Dict[str, Dict[str, Any]] = {}
 async def get_integrations() -> List[Integration]:
     """Get all configured integrations."""
     return integrations_db
+
+
+@router.get("/status")
+async def get_integration_status():
+    """Get status of all configured integrations."""
+    status = {}
+
+    for provider in ["twilio", "sendgrid", "telegram", "telnyx", "whatsapp"]:
+        if provider in provider_configs:
+            status[provider] = {
+                "configured": True,
+                "active": True
+            }
+        else:
+            status[provider] = {
+                "configured": False,
+                "active": False
+            }
+
+    return {
+        "integrations": status,
+        "total_configured": sum(1 for s in status.values() if s["configured"])
+    }
 
 
 @router.get("/{integration_id}")
@@ -439,6 +462,99 @@ async def send_whatsapp(request: SendMessageRequest):
                 error = response.json()
                 raise HTTPException(status_code=400, detail=str(error))
             return {"status": "sent", "result": response.json()}
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send: {str(e)}")
+
+
+# ============== SENDGRID ==============
+
+class SendGridConfigRequest(BaseModel):
+    api_key: str
+    from_email: str
+    from_name: Optional[str] = "WickedCRM"
+
+
+class EmailSendRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+    html: Optional[str] = None
+
+
+@router.post("/sendgrid/configure")
+async def configure_sendgrid(request: SendGridConfigRequest):
+    """Configure SendGrid email integration."""
+    # Verify API key
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.sendgrid.com/v3/user/profile",
+                headers={"Authorization": f"Bearer {request.api_key}"},
+                timeout=10.0
+            )
+            if response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Invalid SendGrid API key")
+    except httpx.RequestError:
+        raise HTTPException(status_code=400, detail="Failed to verify SendGrid credentials")
+
+    # Store config
+    provider_configs["sendgrid"] = {
+        "api_key": request.api_key,
+        "from_email": request.from_email,
+        "from_name": request.from_name
+    }
+
+    # Create integration record
+    existing = next((i for i in integrations_db if i.provider == "sendgrid"), None)
+    if not existing:
+        now = datetime.now().isoformat()
+        new_integration = Integration(
+            id=f"int-{uuid.uuid4().hex[:8]}",
+            user_id="user-1",
+            provider="sendgrid",
+            metadata={"from_email": request.from_email},
+            created_at=now,
+            updated_at=now
+        )
+        integrations_db.append(new_integration)
+
+    return {"status": "connected", "message": f"SendGrid configured with {request.from_email}"}
+
+
+@router.post("/sendgrid/send")
+async def send_email_sendgrid(request: EmailSendRequest):
+    """Send email via SendGrid."""
+    if "sendgrid" not in provider_configs:
+        raise HTTPException(status_code=400, detail="SendGrid not configured")
+
+    config = provider_configs["sendgrid"]
+
+    email_content = [{"type": "text/plain", "value": request.body}]
+    if request.html:
+        email_content.append({"type": "text/html", "value": request.html})
+
+    payload = {
+        "personalizations": [{"to": [{"email": request.to}]}],
+        "from": {"email": config["from_email"], "name": config.get("from_name", "WickedCRM")},
+        "subject": request.subject,
+        "content": email_content
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={
+                    "Authorization": f"Bearer {config['api_key']}",
+                    "Content-Type": "application/json"
+                },
+                json=payload,
+                timeout=10.0
+            )
+            if response.status_code not in [200, 201, 202]:
+                error = response.text
+                raise HTTPException(status_code=400, detail=f"SendGrid error: {error}")
+            return {"status": "sent", "to": request.to, "subject": request.subject}
     except httpx.RequestError as e:
         raise HTTPException(status_code=500, detail=f"Failed to send: {str(e)}")
 

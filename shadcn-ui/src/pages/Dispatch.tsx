@@ -9,6 +9,23 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import {
   MapPin, Truck, User, Clock, AlertTriangle, CheckCircle,
   RefreshCw, Plus, Phone, MessageSquare, Navigation, Activity,
   XCircle, Play, Pause, Filter, Search
@@ -103,6 +120,11 @@ const dispatchApi = {
     await apiClient.patch(`/api/dispatch/jobs/${jobId}`, { status });
   },
 
+  createJob: async (jobData: { title: string; description?: string; location: string; priority: string; notes?: string }): Promise<DispatchJob> => {
+    const { data } = await apiClient.post<DispatchJob>('/api/dispatch/jobs', jobData);
+    return data;
+  },
+
   acknowledgeAlert: async (alertId: string): Promise<void> => {
     await apiClient.post(`/api/dispatch/alerts/${alertId}/acknowledge`);
   },
@@ -114,6 +136,14 @@ export default function Dispatch() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedJob, setSelectedJob] = useState<DispatchJob | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [newJobOpen, setNewJobOpen] = useState(false);
+  const [newJobForm, setNewJobForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
+    notes: '',
+  });
 
   const { data: resources = [], isLoading: loadingResources, refetch: refetchResources } = useQuery({
     queryKey: ['dispatch-resources'],
@@ -164,6 +194,26 @@ export default function Dispatch() {
     mutationFn: (alertId: string) => dispatchApi.acknowledgeAlert(alertId),
     onSuccess: () => {
       refetchAlerts();
+    },
+  });
+
+  const createJobMutation = useMutation({
+    mutationFn: (jobData: { title: string; description?: string; location: string; priority: string; notes?: string }) =>
+      dispatchApi.createJob(jobData),
+    onSuccess: () => {
+      toast.success('Job created successfully');
+      refetchJobs();
+      setNewJobOpen(false);
+      setNewJobForm({
+        title: '',
+        description: '',
+        location: '',
+        priority: 'normal',
+        notes: '',
+      });
+    },
+    onError: () => {
+      toast.error('Failed to create job');
     },
   });
 
@@ -234,10 +284,92 @@ export default function Dispatch() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button className="gradient-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            New Job
-          </Button>
+          <Dialog open={newJobOpen} onOpenChange={setNewJobOpen}>
+            <DialogTrigger asChild>
+              <Button className="gradient-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                New Job
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create New Job</DialogTitle>
+                <DialogDescription>
+                  Add a new dispatch job to the system. Fill in the details below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Job Title</Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g., Pickup at 123 Main St"
+                    value={newJobForm.title}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, title: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., 123 Main St, City, State"
+                    value={newJobForm.location}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, location: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select
+                    value={newJobForm.priority}
+                    onValueChange={(value: 'low' | 'normal' | 'high' | 'urgent') =>
+                      setNewJobForm({ ...newJobForm, priority: value })
+                    }
+                  >
+                    <SelectTrigger id="priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Job description..."
+                    value={newJobForm.description}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Additional notes..."
+                    value={newJobForm.notes}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, notes: e.target.value })}
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNewJobOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => createJobMutation.mutate(newJobForm)}
+                  disabled={!newJobForm.title || !newJobForm.location || createJobMutation.isPending}
+                >
+                  {createJobMutation.isPending ? 'Creating...' : 'Create Job'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

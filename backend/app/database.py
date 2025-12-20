@@ -8,7 +8,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 
-engine = create_engine(settings.database_url)
+# Use DB_URL if set, fallback to database_url
+db_url = settings.db_url or settings.supabase_db_url or settings.database_url
+engine = create_engine(db_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Key, Bell, Shield, Palette, Accessibility, FileText, ExternalLink, DollarSign, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 
 export default function Settings() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const {
@@ -29,6 +30,9 @@ export default function Settings() {
     setScreenReaderOptimized,
     resetToDefaults,
   } = useAccessibility();
+
+  // Get active tab from URL parameter or default to 'profile'
+  const activeTab = searchParams.get('tab') || 'profile';
 
   const [profile, setProfile] = useState({
     full_name: user?.full_name || '',
@@ -135,7 +139,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => navigate(`/settings?tab=${value}`)} className="space-y-6">
         <TabsList className="glass-panel flex-wrap">
           <TabsTrigger value="profile">
             <User className="h-4 w-4 mr-2" />

@@ -26,6 +26,11 @@ from app.routers import (
     websocket,
     threads,
     billing,
+    communications,
+    cart,
+    credits,
+    dispatch,
+    memberships,
 )
 from app.database import Base, engine
 from app.models import payments  # noqa: F401 - ensure models are registered
@@ -61,6 +66,9 @@ app.add_middleware(
         "http://localhost:8080",
         "https://rent.fanz.website",
         "http://192.168.5.240:5173",
+        "capacitor://localhost",  # iOS Capacitor app
+        "ionic://localhost",  # Ionic apps
+        "http://localhost",  # Android WebView
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -86,6 +94,11 @@ app.include_router(livekit.router)
 app.include_router(websocket.router)
 app.include_router(threads.router)
 app.include_router(billing.router)
+app.include_router(communications.router)
+app.include_router(cart.router)
+app.include_router(credits.router)
+app.include_router(dispatch.router)
+app.include_router(memberships.router)
 
 
 @app.get("/")

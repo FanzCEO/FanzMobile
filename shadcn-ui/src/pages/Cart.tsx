@@ -1,24 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Trash2, Plus, Minus, CreditCard, Shield, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/sonner';
-
-interface CartItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  quantity: number;
-  type: 'credits' | 'subscription' | 'addon';
-}
+import { useCartStore } from '@/lib/stores/cartStore';
 
 const CREDIT_PACKS = [
   { id: 'credits-100', name: '100 Credits', description: 'Basic pack', price: 1.00, credits: 100 },
@@ -37,78 +25,35 @@ const SUBSCRIPTIONS = [
 
 export default function Cart() {
   const navigate = useNavigate();
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [ageVerified, setAgeVerified] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const { items, addItem, removeItem, updateQuantity, getSubtotal, getTax, getTotal } = useCartStore();
 
-  // Load cart from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('wicked-cart');
-    if (saved) {
-      setCart(JSON.parse(saved));
-    }
-  }, []);
-
-  // Save cart to localStorage
-  useEffect(() => {
-    localStorage.setItem('wicked-cart', JSON.stringify(cart));
-  }, [cart]);
-
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
+  const addToCart = (item: Omit<Parameters<typeof addItem>[0], 'quantity'>) => {
+    addItem(item);
     toast.success(`Added ${item.name} to cart`);
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(i => i.id !== id));
+  const handleRemove = (id: string) => {
+    removeItem(id);
+    toast.success('Item removed from cart');
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(i => {
-      if (i.id === id) {
-        const newQty = Math.max(1, i.quantity + delta);
-        return { ...i, quantity: newQty };
-      }
-      return i;
-    }));
+  const handleQuantityChange = (id: string, delta: number) => {
+    const item = items.find(i => i.id === id);
+    if (item) {
+      updateQuantity(id, item.quantity + delta);
+    }
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subtotal * 0; // No tax for digital goods
-  const total = subtotal + tax;
+  const subtotal = getSubtotal();
+  const tax = getTax();
+  const total = getTotal();
 
-  const handleCheckout = async () => {
-    if (!ageVerified) {
-      toast.error('Please verify you are 18+ years old');
-      return;
-    }
-    if (!termsAccepted) {
-      toast.error('Please accept the terms of service');
-      return;
-    }
-    if (cart.length === 0) {
+  const handleCheckout = () => {
+    if (items.length === 0) {
       toast.error('Your cart is empty');
       return;
     }
-
-    setProcessing(true);
-
-    // Simulate checkout - in production this would call payment API
-    setTimeout(() => {
-      toast.success('Order placed successfully!');
-      setCart([]);
-      localStorage.removeItem('wicked-cart');
-      navigate('/credits');
-      setProcessing(false);
-    }, 2000);
+    navigate('/checkout');
   };
 
   return (
@@ -168,11 +113,11 @@ export default function Cart() {
           </Card>
 
           {/* Cart Items */}
-          {cart.length > 0 && (
+          {items.length > 0 && (
             <Card className="glass-panel p-6">
-              <h2 className="text-lg font-bold mb-4">Your Cart ({cart.length} items)</h2>
+              <h2 className="text-lg font-bold mb-4">Your Cart ({items.length} items)</h2>
               <div className="space-y-3">
-                {cart.map(item => (
+                {items.map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                     <div className="flex-1">
                       <p className="font-medium">{item.name}</p>
@@ -180,16 +125,16 @@ export default function Cart() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(item.id, -1)}>
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, -1)}>
                           <Minus className="h-4 w-4" />
                         </Button>
                         <span className="w-8 text-center">{item.quantity}</span>
-                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(item.id, 1)}>
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, 1)}>
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
                       <p className="font-bold w-20 text-right">${(item.price * item.quantity).toFixed(2)}</p>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.id)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleRemove(item.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -221,50 +166,13 @@ export default function Cart() {
               </div>
             </div>
 
-            {/* Payment Method */}
-            <div className="mb-4">
-              <Label className="mb-2 block">Payment Method</Label>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2">
-                <div className="flex items-center space-x-2 p-2 rounded bg-white/5">
-                  <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
-                    <CreditCard className="h-4 w-4" /> Credit/Debit Card
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 p-2 rounded bg-white/5">
-                  <RadioGroupItem value="crypto" id="crypto" />
-                  <Label htmlFor="crypto" className="cursor-pointer">Cryptocurrency</Label>
-                </div>
-                <div className="flex items-center space-x-2 p-2 rounded bg-white/5">
-                  <RadioGroupItem value="ccbill" id="ccbill" />
-                  <Label htmlFor="ccbill" className="cursor-pointer">CCBill</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Age Verification */}
-            <div className="space-y-3 mb-4">
-              <div className="flex items-start space-x-2">
-                <Checkbox id="age" checked={ageVerified} onCheckedChange={(c) => setAgeVerified(c === true)} />
-                <Label htmlFor="age" className="text-sm cursor-pointer">
-                  I confirm I am 18 years of age or older
-                </Label>
-              </div>
-              <div className="flex items-start space-x-2">
-                <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(c) => setTermsAccepted(c === true)} />
-                <Label htmlFor="terms" className="text-sm cursor-pointer">
-                  I agree to the <a href="/terms" className="text-primary hover:underline">Terms of Service</a> and <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-                </Label>
-              </div>
-            </div>
-
             <Button
               className="w-full gradient-primary"
               size="lg"
               onClick={handleCheckout}
-              disabled={processing || cart.length === 0}
+              disabled={items.length === 0}
             >
-              {processing ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+              Proceed to Checkout - ${total.toFixed(2)}
             </Button>
 
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">

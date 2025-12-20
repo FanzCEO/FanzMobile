@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
-import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database, Video, Github, Bot, Sparkles } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database, Video, Github, Bot, Sparkles, Settings } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { apiClient } from '@/lib/api/client';
 import type { IntegrationProvider } from '@/types/integration';
@@ -216,6 +216,7 @@ const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const withApiPath = (path: string) => (path.startsWith('/api') ? path : `/api${path}`);
 
 export default function Integrations() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [configDialog, setConfigDialog] = useState<IntegrationConfig | null>(null);
@@ -372,6 +373,14 @@ export default function Integrations() {
             Connect messaging platforms - from FREE to premium
           </p>
         </div>
+        <Button
+          onClick={() => navigate('/settings?tab=api')}
+          variant="outline"
+          className="self-start sm:self-auto"
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          Manage Integrations
+        </Button>
       </div>
 
       {/* Quick Send Buttons */}

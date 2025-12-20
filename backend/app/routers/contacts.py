@@ -1,20 +1,24 @@
 """
 WickedCRM Contacts Router
-Contact management for CRM.
+Contact management for CRM with database persistence.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends, Header
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from sqlalchemy.orm import Session
 import uuid
+
+from app.database import get_db
+from app.models.contact import Contact as ContactModel
 
 router = APIRouter(prefix="/api/contacts", tags=["Contacts"])
 
 
 # ============== DATA MODELS ==============
 
-class Contact(BaseModel):
+class ContactResponse(BaseModel):
     id: str
     user_id: str
     name: str
@@ -24,8 +28,11 @@ class Contact(BaseModel):
     notes: Optional[str] = None
     tags: List[str] = []
     importance: int = 5
-    created_at: str
-    updated_at: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class CreateContactRequest(BaseModel):
@@ -48,49 +55,25 @@ class UpdateContactRequest(BaseModel):
     importance: Optional[int] = None
 
 
-# ============== IN-MEMORY STORAGE ==============
+# ============== HELPER FUNCTIONS ==============
 
-contacts_db: List[Contact] = [
-    Contact(
-        id="contact-1",
-        user_id="user-1",
-        name="Sarah M.",
-        phone="+1234567890",
-        email="sarah@example.com",
-        platform="OnlyFans",
-        notes="VIP subscriber, prefers evening messages",
-        tags=["VIP", "Premium"],
-        importance=9,
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-    Contact(
-        id="contact-2",
-        user_id="user-1",
-        name="Mike T.",
-        phone="+1987654321",
-        email="mike@example.com",
-        platform="Fansly",
-        notes="New subscriber",
-        tags=["New"],
-        importance=6,
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-    Contact(
-        id="contact-3",
-        user_id="user-1",
-        name="Alex J.",
-        phone="+1555555555",
-        email="alex@example.com",
-        platform="Instagram",
-        notes="Potential collab",
-        tags=["Collab", "Creator"],
-        importance=8,
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-]
+def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> str:
+    """Extract user ID from JWT token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        # Return a default user for unauthenticated requests (for backwards compatibility)
+        return "00000000-0000-0000-0000-000000000001"
+
+    try:
+        import jwt
+        from app.config import settings
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        user_id = payload.get("sub") or payload.get("user_id")
+        if not user_id:
+            return "00000000-0000-0000-0000-000000000001"
+        return user_id
+    except:
+        return "00000000-0000-0000-0000-000000000001"
 
 
 # ============== ROUTES ==============
@@ -99,39 +82,57 @@ contacts_db: List[Contact] = [
 async def get_contacts(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    search: Optional[str] = None
-) -> List[Contact]:
+    search: Optional[str] = None,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> List[dict]:
     """Get all contacts with optional search."""
-    filtered = contacts_db
+    query = db.query(ContactModel).filter(ContactModel.user_id == user_id)
 
     if search:
-        search_lower = search.lower()
-        filtered = [
-            c for c in filtered
-            if search_lower in c.name.lower()
-            or (c.email and search_lower in c.email.lower())
-            or (c.phone and search_lower in c.phone)
-        ]
+        search_lower = f"%{search.lower()}%"
+        query = query.filter(
+            (ContactModel.name.ilike(search_lower)) |
+            (ContactModel.email.ilike(search_lower)) |
+            (ContactModel.phone.ilike(search_lower))
+        )
 
-    return filtered[skip:skip + limit]
+    contacts = query.order_by(ContactModel.created_at.desc()).offset(skip).limit(limit).all()
+    return [c.to_dict() for c in contacts]
 
 
 @router.get("/{contact_id}")
-async def get_contact(contact_id: str) -> Contact:
+async def get_contact(
+    contact_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Get a specific contact."""
-    for contact in contacts_db:
-        if contact.id == contact_id:
-            return contact
-    raise HTTPException(status_code=404, detail="Contact not found")
+    try:
+        contact_uuid = uuid.UUID(contact_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid contact ID format")
+
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_uuid,
+        ContactModel.user_id == user_id
+    ).first()
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    return contact.to_dict()
 
 
 @router.post("")
-async def create_contact(request: CreateContactRequest) -> Contact:
+async def create_contact(
+    request: CreateContactRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Create a new contact."""
-    now = datetime.now().isoformat()
-    new_contact = Contact(
-        id=f"contact-{uuid.uuid4().hex[:8]}",
-        user_id="user-1",
+    new_contact = ContactModel(
+        user_id=user_id,
         name=request.name,
         phone=request.phone,
         email=request.email,
@@ -139,45 +140,79 @@ async def create_contact(request: CreateContactRequest) -> Contact:
         notes=request.notes,
         tags=request.tags,
         importance=request.importance,
-        created_at=now,
-        updated_at=now
     )
 
-    contacts_db.insert(0, new_contact)
-    return new_contact
+    db.add(new_contact)
+    db.commit()
+    db.refresh(new_contact)
+
+    return new_contact.to_dict()
 
 
 @router.put("/{contact_id}")
-async def update_contact(contact_id: str, request: UpdateContactRequest) -> Contact:
+async def update_contact(
+    contact_id: str,
+    request: UpdateContactRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Update a contact."""
-    for contact in contacts_db:
-        if contact.id == contact_id:
-            if request.name is not None:
-                contact.name = request.name
-            if request.phone is not None:
-                contact.phone = request.phone
-            if request.email is not None:
-                contact.email = request.email
-            if request.platform is not None:
-                contact.platform = request.platform
-            if request.notes is not None:
-                contact.notes = request.notes
-            if request.tags is not None:
-                contact.tags = request.tags
-            if request.importance is not None:
-                contact.importance = request.importance
-            contact.updated_at = datetime.now().isoformat()
-            return contact
+    try:
+        contact_uuid = uuid.UUID(contact_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid contact ID format")
 
-    raise HTTPException(status_code=404, detail="Contact not found")
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_uuid,
+        ContactModel.user_id == user_id
+    ).first()
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    if request.name is not None:
+        contact.name = request.name
+    if request.phone is not None:
+        contact.phone = request.phone
+    if request.email is not None:
+        contact.email = request.email
+    if request.platform is not None:
+        contact.platform = request.platform
+    if request.notes is not None:
+        contact.notes = request.notes
+    if request.tags is not None:
+        contact.tags = request.tags
+    if request.importance is not None:
+        contact.importance = request.importance
+
+    contact.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(contact)
+
+    return contact.to_dict()
 
 
 @router.delete("/{contact_id}")
-async def delete_contact(contact_id: str):
+async def delete_contact(
+    contact_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
     """Delete a contact."""
-    global contacts_db
-    for i, contact in enumerate(contacts_db):
-        if contact.id == contact_id:
-            contacts_db.pop(i)
-            return {"status": "deleted", "id": contact_id}
-    raise HTTPException(status_code=404, detail="Contact not found")
+    try:
+        contact_uuid = uuid.UUID(contact_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid contact ID format")
+
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_uuid,
+        ContactModel.user_id == user_id
+    ).first()
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    db.delete(contact)
+    db.commit()
+
+    return {"status": "deleted", "id": contact_id}

@@ -8,8 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { threadsApi } from '@/lib/api/threads';
+import { communicationsApi } from '@/lib/api/communications';
 import type { Thread, ThreadEvent } from '@/types/thread';
 import { toast } from '@/components/ui/sonner';
 import { useRealtime } from '@/lib/realtime';
@@ -71,6 +74,17 @@ export default function Communications() {
   const [pttError, setPttError] = useState<string | null>(null);
   const [pttRoom, setPttRoom] = useState<any>(null);
   const [pttTrack, setPttTrack] = useState<any>(null);
+
+  // Communication controls state
+  const [smsRecipient, setSmsRecipient] = useState('');
+  const [smsMessage, setSmsMessage] = useState('');
+  const [callRecipient, setCallRecipient] = useState('');
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [showSmsDialog, setShowSmsDialog] = useState(false);
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const { data: threads = MOCK_THREADS } = useQuery({
     queryKey: ['threads'],
@@ -235,6 +249,70 @@ export default function Communications() {
     }
   };
 
+  const handleSendSMS = async () => {
+    if (!smsRecipient.trim() || !smsMessage.trim()) {
+      toast.error('Please enter recipient and message');
+      return;
+    }
+    try {
+      await communicationsApi.sendSMS({
+        to: smsRecipient,
+        body: smsMessage,
+        thread_id: selectedThread?.id,
+      });
+      toast.success(`SMS sent to ${smsRecipient}`);
+      setSmsRecipient('');
+      setSmsMessage('');
+      setShowSmsDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to send SMS');
+    }
+  };
+
+  const handleInitiateCall = async () => {
+    if (!callRecipient.trim()) {
+      toast.error('Please enter recipient phone number');
+      return;
+    }
+    try {
+      const result = await communicationsApi.initiateCall({
+        to: callRecipient,
+        thread_id: selectedThread?.id,
+        provider: 'twilio',
+      });
+      toast.success(`Call initiated to ${callRecipient}`);
+      setCallRecipient('');
+      setShowCallDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to initiate call');
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailRecipient.trim() || !emailSubject.trim() || !emailBody.trim()) {
+      toast.error('Please fill in all email fields');
+      return;
+    }
+    try {
+      await communicationsApi.sendEmail({
+        to: emailRecipient,
+        subject: emailSubject,
+        body: emailBody,
+        thread_id: selectedThread?.id,
+      });
+      toast.success(`Email sent to ${emailRecipient}`);
+      setEmailRecipient('');
+      setEmailSubject('');
+      setEmailBody('');
+      setShowEmailDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to send email');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -331,7 +409,7 @@ export default function Communications() {
               onChange={(e) => setReply(e.target.value)}
               rows={3}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button className="gradient-primary" onClick={handleSend} disabled={!reply.trim() || !hasThreads}>
                 <Send className="h-4 w-4 mr-2" />
                 Send
@@ -348,6 +426,19 @@ export default function Communications() {
               <Button variant="outline" className="gap-1">
                 <Bot className="h-4 w-4" />
                 AI draft
+              </Button>
+              <Separator orientation="vertical" className="h-8" />
+              <Button variant="outline" onClick={() => setShowSmsDialog(true)} className="gap-1">
+                <MessageSquare className="h-4 w-4" />
+                SMS
+              </Button>
+              <Button variant="outline" onClick={() => setShowCallDialog(true)} className="gap-1">
+                <Phone className="h-4 w-4" />
+                Call
+              </Button>
+              <Button variant="outline" onClick={() => setShowEmailDialog(true)} className="gap-1">
+                <Mail className="h-4 w-4" />
+                Email
               </Button>
             </div>
           </div>
@@ -465,6 +556,129 @@ export default function Communications() {
           </Card>
         </div>
       </div>
+
+      {/* SMS Dialog */}
+      <Dialog open={showSmsDialog} onOpenChange={setShowSmsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send SMS</DialogTitle>
+            <DialogDescription>Send an SMS message via Twilio or Telnyx</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sms-recipient">Recipient Phone Number</Label>
+              <Input
+                id="sms-recipient"
+                type="tel"
+                placeholder="+1234567890"
+                value={smsRecipient}
+                onChange={(e) => setSmsRecipient(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sms-message">Message</Label>
+              <Textarea
+                id="sms-message"
+                placeholder="Type your message..."
+                value={smsMessage}
+                onChange={(e) => setSmsMessage(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSendSMS} className="flex-1 gradient-primary">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Send SMS
+              </Button>
+              <Button variant="outline" onClick={() => setShowSmsDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Call Dialog */}
+      <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Initiate Call</DialogTitle>
+            <DialogDescription>Start a phone call via Twilio</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="call-recipient">Recipient Phone Number</Label>
+              <Input
+                id="call-recipient"
+                type="tel"
+                placeholder="+1234567890"
+                value={callRecipient}
+                onChange={(e) => setCallRecipient(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleInitiateCall} className="flex-1 gradient-primary">
+                <Phone className="h-4 w-4 mr-2" />
+                Start Call
+              </Button>
+              <Button variant="outline" onClick={() => setShowCallDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Email</DialogTitle>
+            <DialogDescription>Compose and send an email</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-recipient">Recipient Email</Label>
+              <Input
+                id="email-recipient"
+                type="email"
+                placeholder="recipient@example.com"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                type="text"
+                placeholder="Email subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-body">Message</Label>
+              <Textarea
+                id="email-body"
+                placeholder="Type your email message..."
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                rows={6}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSendEmail} className="flex-1 gradient-primary">
+                <Mail className="h-4 w-4 mr-2" />
+                Send Email
+              </Button>
+              <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

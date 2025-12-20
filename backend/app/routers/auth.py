@@ -3,7 +3,7 @@ Authentication Router
 Handles user registration, login, password reset, and phone verification
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Header
 from pydantic import BaseModel, validator, field_validator
 from typing import Optional
 from datetime import datetime, timedelta
@@ -624,3 +624,49 @@ async def resend_phone_verification(phone_number: str, background_tasks: Backgro
     )
 
     return AuthResponse(status="success", message="Verification code sent")
+
+
+# ============== CURRENT USER ==============
+
+@router.get("/me")
+async def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """
+    Get current authenticated user information.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = authorization.replace("Bearer ", "")
+
+    # Try to decode as our simple token first (from generate_token)
+    # In production, use proper JWT validation
+    try:
+        import jwt
+        from app.config import settings
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        user_id = payload.get("sub") or payload.get("user_id")
+    except:
+        # Token might be our simple secrets.token_urlsafe format
+        # In that case, we need session storage (not implemented in this simplified version)
+        raise HTTPException(status_code=401, detail="Invalid token format")
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "phone_number": user.phone_number,
+        "email_verified": user.email_verified,
+        "phone_verified": user.phone_verified,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "comped": user.comped,
+        "active_subscription": user.active_subscription,
+        "subscription_plan": user.subscription_plan,
+    }

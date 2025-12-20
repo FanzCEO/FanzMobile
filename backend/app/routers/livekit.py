@@ -5,6 +5,7 @@ Generates access tokens for LiveKit rooms (PTT/voice channels).
 
 print("DEBUG: Loading livekit.py, file path is:", __file__)
 
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from livekit.api import AccessToken, VideoGrants
@@ -17,7 +18,7 @@ class TokenRequest(BaseModel):
     """Request body for token generation."""
     room: str
     identity: str
-    name: str | None = None
+    name: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -71,4 +72,17 @@ async def livekit_health():
     return {
         "configured": bool(settings.livekit_api_key and settings.livekit_api_secret),
         "url": settings.livekit_url or None
+    }
+
+
+@router.get("/status")
+async def livekit_status():
+    """Get LiveKit connection status - alias for health check."""
+    configured = bool(settings.livekit_api_key and settings.livekit_api_secret)
+    return {
+        "status": "ready" if configured else "not_configured",
+        "configured": configured,
+        "url": settings.livekit_url or None,
+        "api_key_set": bool(settings.livekit_api_key),
+        "api_secret_set": bool(settings.livekit_api_secret)
     }
