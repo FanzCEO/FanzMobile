@@ -14,7 +14,9 @@ export type IntegrationProvider =
   | 'webhook'
   | 'notion'
   | 'livekit'
-  | 'github';
+  | 'github'
+  | 'anthropic'
+  | 'openai';
 
 export interface Integration {
   id: string;

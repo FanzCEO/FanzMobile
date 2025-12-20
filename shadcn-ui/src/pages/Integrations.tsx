@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database, Video, Github } from 'lucide-react';
+import { Plug, CheckCircle, XCircle, ExternalLink, MessageSquare, Phone, Calendar, Send, DollarSign, Mail, Database, Video, Github, Bot, Sparkles } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { apiClient } from '@/lib/api/client';
 import type { IntegrationProvider } from '@/types/integration';
@@ -104,6 +104,30 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     fields: [],
     authEndpoint: '/integrations/github/auth-url',
     oauth: true,
+  },
+  {
+    provider: 'anthropic',
+    name: 'Anthropic (Claude)',
+    description: 'Use Claude AI for chat, content generation, and intelligent responses',
+    icon: <Sparkles className="h-8 w-8 text-orange-400" />,
+    price: 'Pay-as-you-go',
+    fields: [
+      { name: 'api_key', label: 'Anthropic API Key', placeholder: 'sk-ant-api...', type: 'password' },
+    ],
+    configEndpoint: '/integrations/anthropic/configure',
+    category: 'Productivity',
+  },
+  {
+    provider: 'openai',
+    name: 'OpenAI (GPT)',
+    description: 'Use GPT-4 and other OpenAI models for AI features',
+    icon: <Bot className="h-8 w-8 text-green-400" />,
+    price: 'Pay-as-you-go',
+    fields: [
+      { name: 'api_key', label: 'OpenAI API Key', placeholder: 'sk-...', type: 'password' },
+    ],
+    configEndpoint: '/integrations/openai/configure',
+    category: 'Productivity',
   },
   {
     provider: 'google_calendar',
