@@ -4,7 +4,7 @@ Unified communication endpoints for SMS, calls, and email.
 Integrates with Twilio, Telnyx, and other providers.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
@@ -18,7 +18,7 @@ import os
 router = APIRouter(prefix="/api/comms", tags=["Communications"])
 
 # Import integrations config
-from app.routers.integrations import provider_configs
+from app.routers.integrations import provider_configs, load_user_settings_configs
 
 
 # ============== DATA MODELS ==============
@@ -80,6 +80,9 @@ async def send_sms(request: SMSRequest, db: Session = Depends(get_db)):
     Auto-detects available provider if not specified.
     Creates a thread event if thread_id is provided.
     """
+    # Load provider configs from user settings
+    load_user_settings_configs()
+
     # Determine which provider to use
     provider = request.provider
     if not provider:
@@ -217,6 +220,9 @@ async def initiate_call(request: CallRequest, db: Session = Depends(get_db)):
     - Twilio: Traditional phone call
     - LiveKit: VoIP/WebRTC call
     """
+    # Load provider configs from user settings
+    load_user_settings_configs()
+
     provider = request.provider or "twilio"
 
     try:
@@ -425,11 +431,29 @@ async def get_comm_history(
 
 # ============== STATUS ENDPOINTS ==============
 
+def get_user_id_from_token(authorization: str = None) -> str:
+    """Extract user ID from JWT token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return "00000000-0000-0000-0000-000000000001"
+    try:
+        import jwt
+        from app.config import settings
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        return payload.get("sub") or payload.get("user_id") or "00000000-0000-0000-0000-000000000001"
+    except:
+        return "00000000-0000-0000-0000-000000000001"
+
+
 @router.get("/status")
-async def get_comm_status():
+async def get_comm_status(authorization: str = Header(None)):
     """
     Get status of all communication providers.
     """
+    # Load provider configs from user settings
+    user_id = get_user_id_from_token(authorization)
+    load_user_settings_configs(user_id)
+
     status = {
         "sms": {
             "configured": False,

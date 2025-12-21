@@ -1,50 +1,72 @@
 """
 WickedCRM Dispatch Router
-Resource and job management for dispatch operations.
+Resource and job management for dispatch operations with database persistence.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Query
 from pydantic import BaseModel
 from typing import Optional, List, Literal
 from datetime import datetime
+from sqlalchemy.orm import Session
 import uuid
+
+from app.database import get_db
+from app.models.dispatch import DispatchResource as ResourceModel
+from app.models.dispatch import DispatchJob as JobModel
+from app.models.dispatch import DispatchAlert as AlertModel
 
 router = APIRouter(prefix="/api/dispatch", tags=["Dispatch"])
 
 
 # ============== DATA MODELS ==============
 
-class DispatchResource(BaseModel):
+class ResourceResponse(BaseModel):
     id: str
     name: str
-    type: Literal["driver", "vehicle", "team"]
-    status: Literal["available", "busy", "offline", "break"]
+    type: str
+    status: str
     current_assignment: Optional[str] = None
     location: Optional[str] = None
     phone: Optional[str] = None
     last_checkin: Optional[str] = None
 
+    class Config:
+        from_attributes = True
 
-class DispatchJob(BaseModel):
+
+class JobResponse(BaseModel):
     id: str
     title: str
-    status: Literal["pending", "assigned", "in_progress", "completed", "cancelled"]
-    priority: Literal["low", "normal", "high", "urgent"]
+    status: str
+    priority: str
     assigned_to: Optional[str] = None
     location: str
     eta: Optional[str] = None
     notes: Optional[str] = None
-    created_at: str
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
-class DispatchAlert(BaseModel):
+class AlertResponse(BaseModel):
     id: str
-    type: Literal["warning", "error", "info"]
+    type: str
     message: str
     resource_id: Optional[str] = None
     job_id: Optional[str] = None
-    created_at: str
     acknowledged: bool = False
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CreateResourceRequest(BaseModel):
+    name: str
+    type: Literal["driver", "vehicle", "team"] = "driver"
+    phone: Optional[str] = None
+    location: Optional[str] = None
 
 
 class CreateJobRequest(BaseModel):
@@ -65,187 +87,460 @@ class UpdateJobRequest(BaseModel):
     notes: Optional[str] = None
 
 
-# ============== IN-MEMORY STORAGE ==============
-
-resources_db: List[DispatchResource] = [
-    DispatchResource(id="1", name="Driver A", type="driver", status="available", phone="+1234567890", location="Downtown", last_checkin="5 min ago"),
-    DispatchResource(id="2", name="Driver B", type="driver", status="busy", current_assignment="Delivery #1045", location="Highway 101", last_checkin="2 min ago"),
-    DispatchResource(id="3", name="Driver C", type="driver", status="break", location="Rest Stop", last_checkin="15 min ago"),
-    DispatchResource(id="4", name="Team Alpha", type="team", status="available", location="Warehouse", last_checkin="1 min ago"),
-    DispatchResource(id="5", name="Driver D", type="driver", status="offline", location="Unknown", last_checkin="2 hours ago"),
-]
-
-jobs_db: List[DispatchJob] = [
-    DispatchJob(id="j1", title="Pickup at 123 Main St", status="pending", priority="high", location="123 Main St", created_at="10:30 AM"),
-    DispatchJob(id="j2", title="Delivery to Bay 4", status="in_progress", priority="normal", assigned_to="2", location="Bay 4", eta="15 min", created_at="09:45 AM"),
-    DispatchJob(id="j3", title="Service call - HVAC", status="assigned", priority="normal", assigned_to="4", location="456 Oak Ave", created_at="08:00 AM"),
-    DispatchJob(id="j4", title="Emergency repair", status="pending", priority="urgent", location="789 Pine Rd", created_at="11:00 AM"),
-    DispatchJob(id="j5", title="Routine inspection", status="completed", priority="low", assigned_to="1", location="Site C", created_at="Yesterday"),
-]
-
-alerts_db: List[DispatchAlert] = [
-    DispatchAlert(id="a1", type="warning", message="Driver B running behind schedule", resource_id="2", created_at="5 min ago"),
-    DispatchAlert(id="a2", type="error", message="Vehicle 3 needs maintenance", resource_id="3", created_at="30 min ago"),
-    DispatchAlert(id="a3", type="info", message="New high-priority job added", job_id="j4", created_at="10 min ago", acknowledged=True),
-]
+class CreateAlertRequest(BaseModel):
+    type: Literal["warning", "error", "info"] = "info"
+    message: str
+    resource_id: Optional[str] = None
+    job_id: Optional[str] = None
 
 
-# ============== ROUTES ==============
+# ============== HELPER FUNCTIONS ==============
 
-@router.get("/resources", response_model=List[DispatchResource])
-async def get_resources():
+def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> str:
+    """Extract user ID from JWT token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return "00000000-0000-0000-0000-000000000001"
+    try:
+        import jwt
+        from app.config import settings
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        return payload.get("sub") or payload.get("user_id") or "00000000-0000-0000-0000-000000000001"
+    except:
+        return "00000000-0000-0000-0000-000000000001"
+
+
+# ============== RESOURCE ROUTES ==============
+
+@router.get("/resources")
+async def get_resources(
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> List[dict]:
     """Get all dispatch resources."""
-    return resources_db
+    resources = db.query(ResourceModel).filter(ResourceModel.user_id == user_id).all()
+    return [r.to_dict() for r in resources]
 
 
-@router.get("/resources/{resource_id}", response_model=DispatchResource)
-async def get_resource(resource_id: str):
+@router.get("/resources/{resource_id}")
+async def get_resource(
+    resource_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Get a specific resource."""
-    for resource in resources_db:
-        if resource.id == resource_id:
-            return resource
-    raise HTTPException(status_code=404, detail="Resource not found")
+    try:
+        resource_uuid = uuid.UUID(resource_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid resource ID")
 
-
-@router.patch("/resources/{resource_id}")
-async def update_resource_status(resource_id: str, status: str):
-    """Update resource status."""
-    for resource in resources_db:
-        if resource.id == resource_id:
-            if status in ["available", "busy", "offline", "break"]:
-                resource.status = status
-                resource.last_checkin = "Just now"
-                return resource
-            raise HTTPException(status_code=400, detail="Invalid status")
-    raise HTTPException(status_code=404, detail="Resource not found")
-
-
-@router.get("/jobs", response_model=List[DispatchJob])
-async def get_jobs():
-    """Get all dispatch jobs."""
-    return jobs_db
-
-
-@router.get("/jobs/{job_id}", response_model=DispatchJob)
-async def get_job(job_id: str):
-    """Get a specific job."""
-    for job in jobs_db:
-        if job.id == job_id:
-            return job
-    raise HTTPException(status_code=404, detail="Job not found")
-
-
-@router.post("/jobs", response_model=DispatchJob)
-async def create_job(request: CreateJobRequest):
-    """Create a new dispatch job."""
-    new_job = DispatchJob(
-        id=f"j{uuid.uuid4().hex[:8]}",
-        title=request.title,
-        status="pending",
-        priority=request.priority,
-        location=request.location,
-        notes=request.notes,
-        created_at=datetime.now().strftime("%I:%M %p"),
-    )
-    jobs_db.insert(0, new_job)
-    return new_job
-
-
-@router.post("/jobs/{job_id}/assign")
-async def assign_job(job_id: str, request: AssignJobRequest):
-    """Assign a job to a resource."""
-    job = None
-    for j in jobs_db:
-        if j.id == job_id:
-            job = j
-            break
-
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    resource = None
-    for r in resources_db:
-        if r.id == request.resource_id:
-            resource = r
-            break
+    resource = db.query(ResourceModel).filter(
+        ResourceModel.id == resource_uuid,
+        ResourceModel.user_id == user_id
+    ).first()
 
     if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    job.assigned_to = request.resource_id
+    return resource.to_dict()
+
+
+@router.post("/resources")
+async def create_resource(
+    request: CreateResourceRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Create a new resource."""
+    new_resource = ResourceModel(
+        user_id=user_id,
+        name=request.name,
+        type=request.type,
+        status="available",
+        phone=request.phone,
+        location=request.location,
+        last_checkin=datetime.utcnow()
+    )
+    db.add(new_resource)
+    db.commit()
+    db.refresh(new_resource)
+    return new_resource.to_dict()
+
+
+@router.patch("/resources/{resource_id}")
+async def update_resource_status(
+    resource_id: str,
+    status: str = Query(...),
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Update resource status."""
+    try:
+        resource_uuid = uuid.UUID(resource_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid resource ID")
+
+    resource = db.query(ResourceModel).filter(
+        ResourceModel.id == resource_uuid,
+        ResourceModel.user_id == user_id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    if status not in ["available", "busy", "offline", "break"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    resource.status = status
+    resource.last_checkin = datetime.utcnow()
+    db.commit()
+    db.refresh(resource)
+    return resource.to_dict()
+
+
+@router.delete("/resources/{resource_id}")
+async def delete_resource(
+    resource_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    """Delete a resource."""
+    try:
+        resource_uuid = uuid.UUID(resource_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid resource ID")
+
+    resource = db.query(ResourceModel).filter(
+        ResourceModel.id == resource_uuid,
+        ResourceModel.user_id == user_id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    db.delete(resource)
+    db.commit()
+    return {"status": "deleted", "id": resource_id}
+
+
+# ============== JOB ROUTES ==============
+
+@router.get("/jobs")
+async def get_jobs(
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> List[dict]:
+    """Get all dispatch jobs."""
+    query = db.query(JobModel).filter(JobModel.user_id == user_id)
+
+    if status:
+        query = query.filter(JobModel.status == status)
+    if priority:
+        query = query.filter(JobModel.priority == priority)
+
+    jobs = query.order_by(JobModel.created_at.desc()).all()
+    return [j.to_dict() for j in jobs]
+
+
+@router.get("/jobs/{job_id}")
+async def get_job(
+    job_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Get a specific job."""
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID")
+
+    job = db.query(JobModel).filter(
+        JobModel.id == job_uuid,
+        JobModel.user_id == user_id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return job.to_dict()
+
+
+@router.post("/jobs")
+async def create_job(
+    request: CreateJobRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Create a new dispatch job."""
+    new_job = JobModel(
+        user_id=user_id,
+        title=request.title,
+        description=request.description,
+        location=request.location,
+        priority=request.priority,
+        notes=request.notes,
+        status="pending"
+    )
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+    return new_job.to_dict()
+
+
+@router.post("/jobs/{job_id}/assign")
+async def assign_job(
+    job_id: str,
+    request: AssignJobRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    """Assign a job to a resource."""
+    try:
+        job_uuid = uuid.UUID(job_id)
+        resource_uuid = uuid.UUID(request.resource_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    job = db.query(JobModel).filter(
+        JobModel.id == job_uuid,
+        JobModel.user_id == user_id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    resource = db.query(ResourceModel).filter(
+        ResourceModel.id == resource_uuid,
+        ResourceModel.user_id == user_id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    job.assigned_to = resource_uuid
     job.status = "assigned"
     resource.status = "busy"
     resource.current_assignment = job.title
 
+    db.commit()
     return {"status": "assigned", "job_id": job_id, "resource_id": request.resource_id}
 
 
 @router.patch("/jobs/{job_id}")
-async def update_job(job_id: str, request: UpdateJobRequest):
+async def update_job(
+    job_id: str,
+    request: UpdateJobRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Update job status or details."""
-    for job in jobs_db:
-        if job.id == job_id:
-            if request.status:
-                job.status = request.status
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID")
 
-                # If completed or cancelled, free up the resource
-                if request.status in ["completed", "cancelled"] and job.assigned_to:
-                    for resource in resources_db:
-                        if resource.id == job.assigned_to:
-                            resource.status = "available"
-                            resource.current_assignment = None
-                            break
+    job = db.query(JobModel).filter(
+        JobModel.id == job_uuid,
+        JobModel.user_id == user_id
+    ).first()
 
-            if request.assigned_to is not None:
-                job.assigned_to = request.assigned_to
-            if request.notes is not None:
-                job.notes = request.notes
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
 
-            return job
+    if request.status:
+        job.status = request.status
 
-    raise HTTPException(status_code=404, detail="Job not found")
+        # If completed or cancelled, free up the resource
+        if request.status in ["completed", "cancelled"] and job.assigned_to:
+            resource = db.query(ResourceModel).filter(
+                ResourceModel.id == job.assigned_to
+            ).first()
+            if resource:
+                resource.status = "available"
+                resource.current_assignment = None
+
+    if request.assigned_to is not None:
+        try:
+            job.assigned_to = uuid.UUID(request.assigned_to) if request.assigned_to else None
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid resource ID")
+
+    if request.notes is not None:
+        job.notes = request.notes
+
+    db.commit()
+    db.refresh(job)
+    return job.to_dict()
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id: str):
+async def delete_job(
+    job_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
     """Delete a job."""
-    global jobs_db
-    for i, job in enumerate(jobs_db):
-        if job.id == job_id:
-            jobs_db.pop(i)
-            return {"status": "deleted", "id": job_id}
-    raise HTTPException(status_code=404, detail="Job not found")
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID")
+
+    job = db.query(JobModel).filter(
+        JobModel.id == job_uuid,
+        JobModel.user_id == user_id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    db.delete(job)
+    db.commit()
+    return {"status": "deleted", "id": job_id}
 
 
-@router.get("/alerts", response_model=List[DispatchAlert])
-async def get_alerts():
+# ============== ALERT ROUTES ==============
+
+@router.get("/alerts")
+async def get_alerts(
+    acknowledged: Optional[bool] = None,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> List[dict]:
     """Get all dispatch alerts."""
-    return alerts_db
+    query = db.query(AlertModel).filter(AlertModel.user_id == user_id)
 
+    if acknowledged is not None:
+        query = query.filter(AlertModel.acknowledged == acknowledged)
 
-@router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str):
-    """Acknowledge an alert."""
-    for alert in alerts_db:
-        if alert.id == alert_id:
-            alert.acknowledged = True
-            return {"status": "acknowledged", "id": alert_id}
-    raise HTTPException(status_code=404, detail="Alert not found")
+    alerts = query.order_by(AlertModel.created_at.desc()).all()
+    return [a.to_dict() for a in alerts]
 
 
 @router.post("/alerts")
-async def create_alert(type: str, message: str, resource_id: Optional[str] = None, job_id: Optional[str] = None):
+async def create_alert(
+    request: CreateAlertRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
     """Create a new alert."""
-    if type not in ["warning", "error", "info"]:
-        raise HTTPException(status_code=400, detail="Invalid alert type")
+    resource_uuid = None
+    job_uuid = None
 
-    new_alert = DispatchAlert(
-        id=f"a{uuid.uuid4().hex[:8]}",
-        type=type,
-        message=message,
-        resource_id=resource_id,
-        job_id=job_id,
-        created_at="Just now",
+    if request.resource_id:
+        try:
+            resource_uuid = uuid.UUID(request.resource_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid resource ID")
+
+    if request.job_id:
+        try:
+            job_uuid = uuid.UUID(request.job_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid job ID")
+
+    new_alert = AlertModel(
+        user_id=user_id,
+        type=request.type,
+        message=request.message,
+        resource_id=resource_uuid,
+        job_id=job_uuid
     )
-    alerts_db.insert(0, new_alert)
-    return new_alert
+    db.add(new_alert)
+    db.commit()
+    db.refresh(new_alert)
+    return new_alert.to_dict()
+
+
+@router.post("/alerts/{alert_id}/acknowledge")
+async def acknowledge_alert(
+    alert_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    """Acknowledge an alert."""
+    try:
+        alert_uuid = uuid.UUID(alert_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid alert ID")
+
+    alert = db.query(AlertModel).filter(
+        AlertModel.id == alert_uuid,
+        AlertModel.user_id == user_id
+    ).first()
+
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    alert.acknowledged = True
+    db.commit()
+    return {"status": "acknowledged", "id": alert_id}
+
+
+@router.delete("/alerts/{alert_id}")
+async def delete_alert(
+    alert_id: str,
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    """Delete an alert."""
+    try:
+        alert_uuid = uuid.UUID(alert_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid alert ID")
+
+    alert = db.query(AlertModel).filter(
+        AlertModel.id == alert_uuid,
+        AlertModel.user_id == user_id
+    ).first()
+
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    db.delete(alert)
+    db.commit()
+    return {"status": "deleted", "id": alert_id}
+
+
+# ============== STATS ==============
+
+@router.get("/stats")
+async def get_dispatch_stats(
+    user_id: str = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Get dispatch statistics."""
+    from sqlalchemy import func
+
+    total_resources = db.query(func.count(ResourceModel.id)).filter(
+        ResourceModel.user_id == user_id
+    ).scalar() or 0
+
+    available_resources = db.query(func.count(ResourceModel.id)).filter(
+        ResourceModel.user_id == user_id,
+        ResourceModel.status == "available"
+    ).scalar() or 0
+
+    pending_jobs = db.query(func.count(JobModel.id)).filter(
+        JobModel.user_id == user_id,
+        JobModel.status == "pending"
+    ).scalar() or 0
+
+    active_jobs = db.query(func.count(JobModel.id)).filter(
+        JobModel.user_id == user_id,
+        JobModel.status.in_(["assigned", "in_progress"])
+    ).scalar() or 0
+
+    unack_alerts = db.query(func.count(AlertModel.id)).filter(
+        AlertModel.user_id == user_id,
+        AlertModel.acknowledged == False
+    ).scalar() or 0
+
+    return {
+        "total_resources": total_resources,
+        "available_resources": available_resources,
+        "pending_jobs": pending_jobs,
+        "active_jobs": active_jobs,
+        "unacknowledged_alerts": unack_alerts
+    }

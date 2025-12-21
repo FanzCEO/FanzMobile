@@ -45,7 +45,7 @@ interface WorkflowCondition {
 
 interface WorkflowAction {
   type: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 interface Workflow {
@@ -66,7 +66,7 @@ interface WorkflowLog {
   id: string;
   workflow_id: string;
   status: 'success' | 'failed' | 'skipped';
-  trigger_data: Record<string, any>;
+  trigger_data: Record<string, unknown>;
   actions_executed: string[];
   error_message: string | null;
   executed_at: string;

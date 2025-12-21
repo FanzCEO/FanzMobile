@@ -4,7 +4,7 @@ type WSStatus = 'disabled' | 'connecting' | 'connected' | 'closed' | 'error';
 
 interface RealtimeOptions {
   url?: string;
-  onMessage?: (data: any) => void;
+  onMessage?: (data: unknown) => void;
 }
 
 /**

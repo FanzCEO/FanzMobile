@@ -22,6 +22,17 @@ interface ImportResult {
   errors: string[];
 }
 
+interface ImportSource {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  accepts: string;
+  color: string;
+  instructions: string[];
+  hasLiveSync?: boolean;
+}
+
 interface ParsedContact {
   name?: string;
   phone_number?: string;
@@ -336,16 +347,18 @@ export default function Import() {
         case 'google':
           contacts = parseGoogleContacts(content);
           break;
-        case 'iphone':
+        case 'iphone': {
           const parsediPhone = parseiPhoneSMS(content);
           contacts = parsediPhone.contacts;
           messages = parsediPhone.messages;
           break;
-        case 'telegram':
+        }
+        case 'telegram': {
           const parsedTelegram = parseTelegramExport(content);
           contacts = parsedTelegram.contacts;
           messages = parsedTelegram.messages;
           break;
+        }
         default:
           // Try to auto-detect
           if (content.includes('BEGIN:VCARD')) {
@@ -504,10 +517,10 @@ export default function Import() {
           if (msg.text || msg.text_entities) {
             let text = msg.text;
             if (typeof text === 'object' && Array.isArray(msg.text_entities)) {
-              text = msg.text_entities.map((e: any) => e.text || '').join('');
+              text = msg.text_entities.map((e: { text?: string }) => e.text || '').join('');
             }
             if (typeof text !== 'string') {
-              text = Array.isArray(text) ? text.map((t: any) => typeof t === 'string' ? t : t.text || '').join('') : String(text);
+              text = Array.isArray(text) ? text.map((t: string | { text?: string }) => typeof t === 'string' ? t : t.text || '').join('') : String(text);
             }
 
             messages.push({
@@ -540,7 +553,7 @@ export default function Import() {
     return { contacts, messages };
   };
 
-  const importSources = [
+  const importSources: ImportSource[] = [
     {
       id: 'telegram',
       name: 'Telegram',
@@ -713,7 +726,7 @@ export default function Import() {
                   id={`file-${source.id}`}
                   disabled={importing}
                 />
-                {(source as any).hasLiveSync && (
+                {source.hasLiveSync && (
                   <Button
                     onClick={importTelegram}
                     disabled={importing}
@@ -730,7 +743,7 @@ export default function Import() {
                   variant="outline"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {(source as any).hasLiveSync ? 'Or Upload Export File' : 'Select File'}
+                  {source.hasLiveSync ? 'Or Upload Export File' : 'Select File'}
                 </Button>
               </CardContent>
             </Card>

@@ -31,6 +31,7 @@ from app.routers import (
     credits,
     dispatch,
     memberships,
+    user_settings,
 )
 from app.database import Base, engine
 from app.models import payments  # noqa: F401 - ensure models are registered
@@ -99,6 +100,7 @@ app.include_router(cart.router)
 app.include_router(credits.router)
 app.include_router(dispatch.router)
 app.include_router(memberships.router)
+app.include_router(user_settings.router)
 
 
 @app.get("/")

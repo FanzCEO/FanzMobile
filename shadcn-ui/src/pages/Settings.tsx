@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { User, Key, Bell, Shield, Palette, Accessibility, FileText, ExternalLink, DollarSign, Loader2, Plus, Trash2 } from 'lucide-react';
+import { User, Key, Bell, Shield, Palette, Accessibility, FileText, ExternalLink, DollarSign, Loader2, Plus, Trash2, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAccessibility } from '@/contexts/AccessibilityContext';
 import { billingApi, FeeConfig } from '@/lib/api/billing';
+import { settingsApi } from '@/lib/api/settings';
 import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
@@ -41,11 +42,14 @@ export default function Settings() {
 
   const [apiKeys, setApiKeys] = useState({
     openai_key: '',
-    twilio_sid: '',
-    twilio_token: '',
+    twilio_account_sid: '',
+    twilio_auth_token: '',
     huggingface_token: '',
     huggingface_endpoint: '',
   });
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [apiKeysSaving, setApiKeysSaving] = useState(false);
+  const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
 
   const [fees, setFees] = useState<Record<string, FeeConfig>>({});
   const [feesLoading, setFeesLoading] = useState(false);
@@ -55,7 +59,24 @@ export default function Settings() {
 
   useEffect(() => {
     loadFees();
+    loadApiKeys();
   }, []);
+
+  const loadApiKeys = async () => {
+    setApiKeysLoading(true);
+    try {
+      const data = await settingsApi.getSettings();
+      setSavedKeys({
+        openai: data.has_openai,
+        twilio: data.has_twilio,
+        huggingface: !!data.huggingface_token,
+      });
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+    } finally {
+      setApiKeysLoading(false);
+    }
+  };
 
   const loadFees = async () => {
     setFeesLoading(true);
@@ -125,8 +146,40 @@ export default function Settings() {
     toast.success('Profile updated successfully');
   };
 
-  const handleSaveApiKeys = () => {
-    toast.success('API settings saved');
+  const handleSaveApiKeys = async () => {
+    setApiKeysSaving(true);
+    try {
+      // Only send non-empty values
+      const keysToSave: Record<string, string> = {};
+      if (apiKeys.openai_key) keysToSave.openai_key = apiKeys.openai_key;
+      if (apiKeys.twilio_account_sid) keysToSave.twilio_account_sid = apiKeys.twilio_account_sid;
+      if (apiKeys.twilio_auth_token) keysToSave.twilio_auth_token = apiKeys.twilio_auth_token;
+      if (apiKeys.huggingface_token) keysToSave.huggingface_token = apiKeys.huggingface_token;
+      if (apiKeys.huggingface_endpoint) keysToSave.huggingface_endpoint = apiKeys.huggingface_endpoint;
+
+      if (Object.keys(keysToSave).length === 0) {
+        toast.error('Please enter at least one API key');
+        return;
+      }
+
+      await settingsApi.saveApiKeys(keysToSave);
+      toast.success('API keys saved successfully');
+
+      // Clear the form and reload saved status
+      setApiKeys({
+        openai_key: '',
+        twilio_account_sid: '',
+        twilio_auth_token: '',
+        huggingface_token: '',
+        huggingface_endpoint: '',
+      });
+      await loadApiKeys();
+    } catch (error) {
+      console.error('Failed to save API keys:', error);
+      toast.error('Failed to save API keys');
+    } finally {
+      setApiKeysSaving(false);
+    }
   };
 
   return (
@@ -375,43 +428,63 @@ export default function Settings() {
         <TabsContent value="api">
           <Card className="glass-panel p-6">
             <h2 className="text-xl font-bold mb-6">API Configuration</h2>
-            <div className="space-y-4 max-w-md">
-              <div>
-                <Label htmlFor="openai_key">OpenAI API Key</Label>
-                <Input
-                  id="openai_key"
-                  type="password"
-                  placeholder="sk-..."
-                  value={apiKeys.openai_key}
-                  onChange={(e) => setApiKeys({ ...apiKeys, openai_key: e.target.value })}
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Used for AI message processing
-                </p>
+            {apiKeysLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading saved keys...
               </div>
-              <div>
-                <Label htmlFor="twilio_sid">Twilio Account SID</Label>
-                <Input
-                  id="twilio_sid"
-                  type="password"
-                  placeholder="AC..."
-                  value={apiKeys.twilio_sid}
-                  onChange={(e) => setApiKeys({ ...apiKeys, twilio_sid: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="twilio_token">Twilio Auth Token</Label>
-                <Input
-                  id="twilio_token"
-                  type="password"
-                  placeholder="..."
-                  value={apiKeys.twilio_token}
-                  onChange={(e) => setApiKeys({ ...apiKeys, twilio_token: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
+            ) : (
+              <div className="space-y-4 max-w-md">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="openai_key">OpenAI API Key</Label>
+                    {savedKeys.openai && (
+                      <span className="text-xs text-green-500 flex items-center gap-1">
+                        <Check className="h-3 w-3" /> Saved
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="openai_key"
+                    type="password"
+                    placeholder={savedKeys.openai ? '••••••••••••' : 'sk-...'}
+                    value={apiKeys.openai_key}
+                    onChange={(e) => setApiKeys({ ...apiKeys, openai_key: e.target.value })}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Used for AI message processing
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="twilio_sid">Twilio Account SID</Label>
+                    {savedKeys.twilio && (
+                      <span className="text-xs text-green-500 flex items-center gap-1">
+                        <Check className="h-3 w-3" /> Saved
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="twilio_sid"
+                    type="password"
+                    placeholder={savedKeys.twilio ? '••••••••••••' : 'AC...'}
+                    value={apiKeys.twilio_account_sid}
+                    onChange={(e) => setApiKeys({ ...apiKeys, twilio_account_sid: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="twilio_token">Twilio Auth Token</Label>
+                  <Input
+                    id="twilio_token"
+                    type="password"
+                    placeholder={savedKeys.twilio ? '••••••••••••' : '...'}
+                    value={apiKeys.twilio_auth_token}
+                    onChange={(e) => setApiKeys({ ...apiKeys, twilio_auth_token: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
               <div className="pt-2">
                 <Label htmlFor="huggingface_token">Hugging Face API Token</Label>
                 <Input
@@ -440,10 +513,22 @@ export default function Settings() {
                   Optional: custom inference endpoint URL
                 </p>
               </div>
-              <Button className="gradient-primary" onClick={handleSaveApiKeys}>
-                Save API Keys
+              <Button
+                className="gradient-primary"
+                onClick={handleSaveApiKeys}
+                disabled={apiKeysSaving}
+              >
+                {apiKeysSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save API Keys'
+                )}
               </Button>
-            </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 

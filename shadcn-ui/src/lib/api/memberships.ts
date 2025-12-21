@@ -59,8 +59,9 @@ export const membershipsApi = {
     try {
       const res = await apiClient.get<{ subscription: UserSubscription | null }>('/api/memberships/current');
       return res.data.subscription;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 404) {
         return null;
       }
       throw error;

@@ -79,10 +79,28 @@ class AIService:
 
     def get_health_status(self) -> dict:
         """Get AI service health status."""
+        # Check provider availability
+        groq_available = bool(getattr(settings, 'groq_api_key', None))
+        openai_available = bool(settings.openai_api_key)
+        google_available = bool(getattr(settings, 'google_api_key', None))
+        huggingface_available = bool(getattr(settings, 'huggingface_api_key', None))
+
+        providers = {
+            "groq": {"available": groq_available, "model": "llama-3.3-70b-versatile"},
+            "openai": {"available": openai_available, "model": "gpt-4o-mini"},
+            "google": {"available": google_available, "model": "gemini-1.5-flash"},
+            "huggingface": {"available": huggingface_available, "models": ["dark-planet-10.7b", "stheno-v3.2"]},
+            "ollama": {"status": "not_configured", "models": []}
+        }
+
+        models_available = sum([1 for p in [groq_available, openai_available, google_available, huggingface_available] if p])
+
         return {
             "status": "healthy" if self.is_configured() else "demo_mode",
             "api_key_configured": bool(settings.openai_api_key),
-            "models_available": len(COMPANIONS),
+            "models_available": models_available,
+            "total_models": 14,
+            "providers": providers,
             "message": "AI fully active" if self.is_configured() else "Running in demo mode - set OPENAI_API_KEY for full features"
         }
 

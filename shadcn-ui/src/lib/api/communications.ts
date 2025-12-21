@@ -31,7 +31,7 @@ export interface CommHistoryItem {
   body?: string;
   status: string;
   created_at: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CommStatusResponse {

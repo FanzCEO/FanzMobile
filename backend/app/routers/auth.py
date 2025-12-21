@@ -11,10 +11,12 @@ import uuid
 import hashlib
 import secrets
 import re
+import jwt
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
+from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -121,8 +123,15 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def generate_token() -> str:
-    """Generate secure token"""
+def generate_token(user_id: str = None) -> str:
+    """Generate JWT token with user_id"""
+    if user_id:
+        payload = {
+            "sub": user_id,
+            "exp": datetime.utcnow() + timedelta(days=7),
+            "iat": datetime.utcnow()
+        }
+        return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return secrets.token_urlsafe(32)
 
 
@@ -155,9 +164,7 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
 
     if existing_user:
         if existing_user.password_hash and verify_password(request.password, existing_user.password_hash):
-            access_token = generate_token()
-            # In a real app, you would store the session in a database or Redis
-            # sessions[access_token] = existing_user.id
+            access_token = generate_token(str(existing_user.id))
             return AuthResponse(
                 status="success",
                 user_id=str(existing_user.id),
@@ -208,8 +215,7 @@ async def signup_with_email(request: EmailSignupRequest, background_tasks: Backg
     )
 
     # Generate access token
-    access_token = generate_token()
-    # sessions[access_token] = user_id
+    access_token = generate_token(str(user_id))
 
     user = db.query(User).filter(User.id == user_id).first()
 
@@ -295,8 +301,7 @@ async def verify_phone_signup(request: VerifyPhoneRequest, db: Session = Depends
     # del verification_codes[request.phone_number]
 
     # Generate access token
-    access_token = generate_token()
-    # sessions[access_token] = user_id
+    access_token = generate_token(str(user_id))
 
     return AuthResponse(
         status="success",
@@ -323,7 +328,7 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Se
             new_user = User(
                 email=request.email,
                 password_hash=hash_password(request.password),
-                name=request.email.split("@")[0],
+                full_name=request.email.split("@")[0],
             )
             db.add(new_user);
             db.commit()
@@ -334,9 +339,8 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Se
             user.password_hash = hash_password(request.password)
             db.commit()
 
-        access_token = generate_token()
-        # In a real app, you would store the session in a database or Redis
-        # sessions[access_token] = user.id
+        access_token = generate_token(str(user.id))
+        # Token now contains user_id as JWT
 
         return AuthResponse(
             status="success",
@@ -398,8 +402,7 @@ async def login(request: LoginRequest, background_tasks: BackgroundTasks, db: Se
 
         # del verification_codes[request.phone_number]
 
-        access_token = generate_token()
-        # sessions[access_token] = user.id
+        access_token = generate_token(str(user.id))
 
         return AuthResponse(
             status="success",

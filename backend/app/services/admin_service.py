@@ -36,7 +36,7 @@ def is_admin(user_id: str, db: Session) -> bool:
 
 def require_admin(
     authorization: Optional[str] = Header(None),
-    x_admin_key: Optional[str] = Header(None, convert_underscores=False),
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
     db: Session = Depends(get_db)
 ):
     """
@@ -45,6 +45,7 @@ def require_admin(
     - Bearer JWT for a user present in admin_users table
     - X-Admin-Key header that matches settings.admin_api_key (for service usage)
     """
+    # Check admin API key first
     if x_admin_key and settings.admin_api_key and x_admin_key == settings.admin_api_key:
         return "admin-key"
 

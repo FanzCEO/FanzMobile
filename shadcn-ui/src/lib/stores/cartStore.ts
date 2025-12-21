@@ -9,7 +9,7 @@ export interface CartItem {
   quantity: number;
   type: 'credits' | 'subscription' | 'addon' | 'product';
   productId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface CartState {

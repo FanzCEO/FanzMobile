@@ -5,9 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { uploadsApi } from "@/lib/api/uploads";
 import { toast } from "sonner";
 
+interface UploadedFile {
+  id: string;
+  original_filename: string;
+  content_type: string;
+  size: number;
+}
+
 export function FileUploadDemo() {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = async (filesToUpload: File[]) => {
@@ -21,10 +28,11 @@ export function FileUploadDemo() {
       setUploadedFiles((prev) => [...prev, ...results]);
 
       toast.success(`${results.length} file(s) uploaded successfully`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Upload error:", error);
-      toast.error(error.response?.data?.detail || "Upload failed");
-      throw error; // Re-throw to let FileUpload component handle it
+      const message = error instanceof Error ? error.message : "Upload failed";
+      toast.error(message);
+      throw error;
     } finally {
       setIsUploading(false);
     }
@@ -35,9 +43,10 @@ export function FileUploadDemo() {
       await uploadsApi.delete(fileId);
       setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
       toast.success("File deleted");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete error:", error);
-      toast.error(error.response?.data?.detail || "Delete failed");
+      const message = error instanceof Error ? error.message : "Delete failed";
+      toast.error(message);
     }
   };
 

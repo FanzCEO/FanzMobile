@@ -300,6 +300,10 @@ export default function Integrations() {
           // Show instructions (like for Telegram)
           toast.info(data.instructions.join('\n'));
           setOauthLoading(null);
+        } else if (data.error || data.message) {
+          // Show error or message from server
+          toast.error(data.message || data.error || 'OAuth not configured for this integration');
+          setOauthLoading(null);
         } else {
           toast.error('OAuth not configured for this integration');
           setOauthLoading(null);

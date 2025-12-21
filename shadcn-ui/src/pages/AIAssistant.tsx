@@ -27,6 +27,24 @@ interface AIHealthStatus {
   };
 }
 
+type TabId = 'chat' | 'draft' | 'suggestions' | 'analytics' | 'moderation';
+
+interface EngagementPredictionResult {
+  predicted_views?: number;
+  predicted_likes?: number;
+  viral_potential?: number;
+  best_posting_time?: string;
+  optimization_tips?: string[];
+}
+
+interface ModerationResult {
+  approved: boolean;
+  confidence?: number;
+  explanation?: string;
+  flags?: string[];
+  requires_human_review?: boolean;
+}
+
 export default function AIAssistant() {
   const [activeTab, setActiveTab] = useState<'chat' | 'draft' | 'suggestions' | 'analytics' | 'moderation'>('chat');
   const [health, setHealth] = useState<AIHealthStatus | null>(null);
@@ -72,13 +90,14 @@ export default function AIAssistant() {
   };
 
   const getProviderStatus = (provider: string) => {
-    if (!health) return false;
+    if (!health || !health.providers) return false;
+    const providers = health.providers;
     switch (provider) {
-      case 'groq': return health.providers.groq.available;
-      case 'openai': return health.providers.openai.available;
-      case 'google': return health.providers.google.available;
-      case 'huggingface': return health.providers.huggingface.available;
-      case 'ollama': return health.providers.ollama.status === 'operational';
+      case 'groq': return providers.groq?.available ?? false;
+      case 'openai': return providers.openai?.available ?? false;
+      case 'google': return providers.google?.available ?? false;
+      case 'huggingface': return providers.huggingface?.available ?? false;
+      case 'ollama': return providers.ollama?.status === 'operational';
       default: return false;
     }
   };
@@ -156,7 +175,7 @@ export default function AIAssistant() {
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as TabId)}
             className={cn(
               "p-3 rounded-xl border text-left transition-all",
               activeTab === tab.id
@@ -445,7 +464,7 @@ function EngagementPrediction() {
   const [content, setContent] = useState('');
   const [audience, setAudience] = useState('general');
   const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState<any>(null);
+  const [prediction, setPrediction] = useState<EngagementPredictionResult | null>(null);
 
   const predict = async () => {
     if (!content) return;
@@ -545,7 +564,7 @@ function EngagementPrediction() {
 function ContentModeration() {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ModerationResult | null>(null);
 
   const moderate = async () => {
     if (!content) return;

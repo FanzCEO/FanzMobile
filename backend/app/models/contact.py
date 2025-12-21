@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from sqlalchemy import Column, DateTime, String, Integer, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -24,7 +24,7 @@ class Contact(Base):
     email = Column(String(255), nullable=True)
     platform = Column(String(100), nullable=True)  # OnlyFans, Fansly, Instagram, etc.
     notes = Column(Text, nullable=True)
-    tags = Column(ARRAY(String), nullable=True, default=[])
+    tags = Column(JSONB, nullable=True, default=[])
     importance = Column(Integer, default=5)  # 1-10 scale
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -63,8 +63,8 @@ export default function Memberships() {
         toast.success(result.message || 'Successfully subscribed!');
         await loadData();
       }
-    } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to subscribe';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to subscribe';
       toast.error(message);
     } finally {
       setLoading(null);
@@ -78,8 +78,8 @@ export default function Memberships() {
       toast.success(result.message || 'Subscription cancelled');
       setShowCancelDialog(false);
       await loadData();
-    } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to cancel subscription';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to cancel subscription';
       toast.error(message);
     } finally {
       setCancelling(false);

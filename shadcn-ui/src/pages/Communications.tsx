@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Radio, Send, Phone, MessageSquare, Mic, MicOff, AlertTriangle, Bot, Plug, MapPin, Activity, Mail } from 'lucide-react';
@@ -18,7 +18,12 @@ import { toast } from '@/components/ui/sonner';
 import { useRealtime } from '@/lib/realtime';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { livekitApi } from '@/lib/livekit';
-import { useEffect } from 'react';
+import type { Room, LocalTrack } from 'livekit-client';
+
+interface WebSocketPayload {
+  thread_id?: string;
+  event?: ThreadEvent;
+}
 
 // Empty default - threads come from API
 const EMPTY_THREADS: Thread[] = [];
@@ -41,8 +46,8 @@ export default function Communications() {
   const [pttActive, setPttActive] = useState(false);
   const [pttReady, setPttReady] = useState(false);
   const [pttError, setPttError] = useState<string | null>(null);
-  const [pttRoom, setPttRoom] = useState<any>(null);
-  const [pttTrack, setPttTrack] = useState<any>(null);
+  const [pttRoom, setPttRoom] = useState<Room | null>(null);
+  const [pttTrack, setPttTrack] = useState<LocalTrack | null>(null);
 
   // Communication controls state
   const [smsRecipient, setSmsRecipient] = useState('');
@@ -91,8 +96,9 @@ export default function Communications() {
     url: wsUrl,
     onMessage: (payload) => {
       // Expecting shape { thread_id, event }
-      const threadId = (payload as any)?.thread_id;
-      const event = (payload as any)?.event as ThreadEvent | undefined;
+      const wsPayload = payload as WebSocketPayload;
+      const threadId = wsPayload?.thread_id;
+      const event = wsPayload?.event;
       if (!threadId || !event) return;
 
       // Update events cache
@@ -183,9 +189,10 @@ export default function Communications() {
       setPttRoom(room);
       setPttReady(true);
       toast.success('PTT connected');
-    } catch (error: any) {
-      console.error('PTT join failed', error?.message || error);
-      const errorMsg = error?.message || 'PTT join failed - check microphone permissions';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'PTT join failed';
+      console.error('PTT join failed', errorMessage);
+      const errorMsg = errorMessage || 'PTT join failed - check microphone permissions';
       setPttError(errorMsg);
       toast.error(errorMsg);
       await cleanupPtt();
@@ -231,7 +238,7 @@ export default function Communications() {
       return;
     }
     try {
-      await threadsApi.sendMessage(selectedThread.id, reply, (selectedThread.channel as any) || 'in_app');
+      await threadsApi.sendMessage(selectedThread.id, reply, (selectedThread.channel as string) || 'in_app');
       setReply('');
       queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread.id] });
       queryClient.invalidateQueries({ queryKey: ['threads'] });
@@ -256,8 +263,9 @@ export default function Communications() {
       setSmsMessage('');
       setShowSmsDialog(false);
       queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to send SMS');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send SMS';
+      toast.error(message);
     }
   };
 
@@ -276,8 +284,9 @@ export default function Communications() {
       setCallRecipient('');
       setShowCallDialog(false);
       queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to initiate call');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to initiate call';
+      toast.error(message);
     }
   };
 
@@ -299,8 +308,9 @@ export default function Communications() {
       setEmailBody('');
       setShowEmailDialog(false);
       queryClient.invalidateQueries({ queryKey: ['thread-events', selectedThread?.id] });
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to send email');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send email';
+      toast.error(message);
     }
   };
 
@@ -366,8 +376,8 @@ export default function Communications() {
         {/* Center: Thread view */}
         <Card className="glass-panel p-4 lg:col-span-2 flex flex-col">
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="font-bold text-lg">{selectedThread.title}</h3>
-            <Badge variant="outline" className="text-xs">{selectedThread.channel}</Badge>
+            <h3 className="font-bold text-lg">{selectedThread?.title || 'No Thread Selected'}</h3>
+            <Badge variant="outline" className="text-xs">{selectedThread?.channel || 'none'}</Badge>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto max-h-[520px] pr-1">
             {events.map((event) => (
