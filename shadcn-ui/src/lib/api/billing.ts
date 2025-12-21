@@ -55,11 +55,11 @@ export const billingApi = {
   },
 
   updateFee: async (type: string, percent: number, flat_cents: number): Promise<void> => {
-    await apiClient.put(`/api/billing/fees/${type}`, { percent, flat_cents });
+    await apiClient.put(`/api/billing/fees/${type}`, { transaction_type: type, percent, flat_cents });
   },
 
   createFee: async (type: string, percent: number, flat_cents: number): Promise<void> => {
-    await apiClient.post('/api/billing/fees', { type, percent, flat_cents });
+    await apiClient.post('/api/billing/fees', { transaction_type: type, percent, flat_cents });
   },
 
   deleteFee: async (type: string): Promise<void> => {
