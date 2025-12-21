@@ -150,6 +150,18 @@ export default function Communications() {
 
   const handleJoinPtt = async () => {
     setPttError(null);
+
+    // Check if running in mobile WebView (Capacitor) - must check FIRST
+    const isMobileApp = window.location.protocol === 'capacitor:' ||
+                        (window as typeof window & { Capacitor?: unknown }).Capacitor !== undefined ||
+                        navigator.userAgent.includes('Mobile') && !navigator.userAgent.includes('Safari/');
+
+    if (isMobileApp) {
+      setPttError('Voice features coming soon to mobile app');
+      toast.info('PTT available on web. Mobile voice coming in next update.');
+      return;
+    }
+
     if (!livekitConfigured) {
       setPttError('LiveKit not configured');
       return;
@@ -158,17 +170,6 @@ export default function Communications() {
       const roomName = roomId;
       const identity = userId || 'anonymous';
       const { token, url } = await livekitApi.getToken(roomName, identity);
-
-      // Check if running in mobile WebView (Capacitor)
-      const isMobileApp = window.location.protocol === 'capacitor:' ||
-                          (window as any).Capacitor !== undefined;
-
-      if (isMobileApp) {
-        // Mobile apps need livekit-client bundled - show message for now
-        setPttError('PTT requires microphone permission. Please enable in Settings.');
-        toast.error('Voice features require app update. Use web version for PTT.');
-        return;
-      }
 
       // Lazy load livekit-client from CDN for web browsers
       const lk = await import(/* @vite-ignore */ 'https://esm.sh/livekit-client@2.8.2');
