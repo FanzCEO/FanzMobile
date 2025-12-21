@@ -179,12 +179,22 @@ export default function Communications() {
 
       // Lazy load livekit-client from CDN for web browsers
       const lk = await import(/* @vite-ignore */ 'https://esm.sh/livekit-client@2.8.2');
-      const room = await lk.connect(url, token, {
-        autoSubscribe: true,
+
+      // Create and connect to the room
+      const room = new lk.Room({
+        adaptiveStream: true,
+        dynacast: true,
       });
-      const micTrack = await lk.createLocalAudioTrack();
+      await room.connect(url, token);
+
+      // Create and publish audio track (muted by default for PTT)
+      const micTrack = await lk.createLocalAudioTrack({
+        echoCancellation: true,
+        noiseSuppression: true,
+      });
       await room.localParticipant.publishTrack(micTrack);
-      await micTrack.mute?.();
+      await micTrack.mute();
+
       setPttTrack(micTrack);
       setPttRoom(room);
       setPttReady(true);

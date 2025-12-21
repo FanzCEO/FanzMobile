@@ -145,11 +145,6 @@ export default function Admin() {
         { key: 'usdc', label: 'USDC Address', placeholder: 'USDC wallet address' },
       ],
       cosmo_pay: [{ key: 'token', label: 'Cosmo Pay Token', placeholder: 'Token' }],
-      stripe: [
-        { key: 'publishable_key', label: 'Publishable Key', placeholder: 'pk_live_...' },
-        { key: 'secret_key', label: 'Secret Key', placeholder: 'sk_live_...' },
-        { key: 'webhook_secret', label: 'Webhook Secret', placeholder: 'whsec_...' },
-      ],
       square: [
         { key: 'access_token', label: 'Access Token', placeholder: 'Access token' },
         { key: 'location_id', label: 'Location ID', placeholder: 'Location ID' },
@@ -175,10 +170,6 @@ export default function Admin() {
         { key: 'api_key', label: 'API Key', placeholder: 'API key' },
         { key: 'public_key', label: 'Public Key', placeholder: 'Public key' },
       ],
-      paypal: [
-        { key: 'client_id', label: 'Client ID', placeholder: 'Client ID' },
-        { key: 'secret', label: 'Secret', placeholder: 'Secret' },
-      ],
     }),
     []
   );
@@ -191,11 +182,9 @@ export default function Admin() {
       { id: 'verotel', label: 'Verotel (Adult)', category: 'Adult' },
       { id: 'vendo', label: 'Vendo', category: 'Adult' },
       { id: 'commercegate', label: 'CommerceGate', category: 'Adult' },
-      { id: 'stripe', label: 'Stripe', category: 'Standard' },
       { id: 'square', label: 'Square', category: 'Standard' },
       { id: 'sumup', label: 'SumUp', category: 'Standard' },
       { id: 'godaddy', label: 'GoDaddy Payments', category: 'Standard' },
-      { id: 'paypal', label: 'PayPal', category: 'Standard' },
       { id: 'bankful', label: 'Bankful', category: 'Banking' },
       { id: 'triplea', label: 'Triple-A (Crypto)', category: 'Crypto' },
       { id: 'nowpayments', label: 'NowPayments (Crypto)', category: 'Crypto' },
