@@ -166,34 +166,38 @@ async def disconnect_integration(integration_id: str):
 @router.get("/telegram/updates")
 async def get_telegram_updates():
     """
-    Demo endpoint to fetch Telegram updates.
-    In production, replace with real Telegram bot webhook or polling.
+    Fetch Telegram updates via bot polling.
+    Returns real updates if bot is configured.
     """
-    sample_messages = [
-        {
-            "chat_id": "12345",
-            "username": "demo_user",
-            "from": "Demo User",
-            "text": "Hello from Telegram!",
-            "date": datetime.now().isoformat()
-        },
-        {
-            "chat_id": "12345",
-            "username": "demo_user",
-            "from": "You",
-            "text": "Got it, thanks!",
-            "date": datetime.now().isoformat()
-        },
-        {
-            "chat_id": "67890",
-            "username": "another_user",
-            "from": "Alex",
-            "text": "When is our next call?",
-            "date": datetime.now().isoformat()
-        }
-    ]
+    if "telegram" not in provider_configs:
+        return {"messages": [], "error": "Telegram not configured"}
 
-    return {"messages": sample_messages}
+    bot_token = provider_configs["telegram"]["bot_token"]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.telegram.org/bot{bot_token}/getUpdates",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                updates = response.json().get("result", [])
+                messages = []
+                for update in updates[-20:]:  # Last 20 updates
+                    msg = update.get("message", {})
+                    if msg:
+                        messages.append({
+                            "chat_id": str(msg.get("chat", {}).get("id", "")),
+                            "username": msg.get("from", {}).get("username", ""),
+                            "from": msg.get("from", {}).get("first_name", "Unknown"),
+                            "text": msg.get("text", ""),
+                            "date": datetime.fromtimestamp(msg.get("date", 0)).isoformat() if msg.get("date") else ""
+                        })
+                return {"messages": messages}
+            else:
+                return {"messages": [], "error": "Failed to fetch updates"}
+    except httpx.RequestError as e:
+        return {"messages": [], "error": str(e)}
 
 @router.post("/telegram/configure")
 async def configure_telegram(request: TelegramConfigRequest):

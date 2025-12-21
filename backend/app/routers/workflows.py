@@ -22,7 +22,8 @@ TriggerType = Literal[
     "after_event",
     "on_schedule",
     "on_tag_added",
-    "on_payment"
+    "on_payment",
+    "on_webhook"
 ]
 
 ActionType = Literal[
@@ -93,102 +94,176 @@ class WorkflowLog(BaseModel):
 
 # ============== IN-MEMORY STORAGE ==============
 
-workflows_db: List[Workflow] = [
-    Workflow(
-        id="wf-001",
-        user_id="user-1",
-        name="Auto-confirm meetings",
-        description="Automatically send confirmation when meeting is detected in messages",
-        trigger="on_message",
-        conditions=[
-            WorkflowCondition(field="ai_result.meeting_detected", operator="equals", value="true")
-        ],
-        actions=[
-            WorkflowAction(type="send_message", config={"template": "meeting_confirmation"}),
-            WorkflowAction(type="create_task", config={"title": "Follow up on meeting"})
-        ],
-        enabled=True,
-        run_count=24,
-        last_run=datetime.now().isoformat(),
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-    Workflow(
-        id="wf-002",
-        user_id="user-1",
-        name="Tag VIP contacts",
-        description="Add VIP tag to contacts with high importance score",
-        trigger="on_contact_created",
-        conditions=[
-            WorkflowCondition(field="importance", operator="greater_than", value="8")
-        ],
-        actions=[
-            WorkflowAction(type="add_tag", config={"tag": "VIP"}),
-            WorkflowAction(type="send_notification", config={"message": "New VIP contact added"})
-        ],
-        enabled=True,
-        run_count=12,
-        last_run=datetime.now().isoformat(),
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-    Workflow(
-        id="wf-003",
-        user_id="user-1",
-        name="Send follow-up reminders",
-        description="Send reminder 1 hour before scheduled events",
-        trigger="before_event",
-        conditions=[],
-        actions=[
-            WorkflowAction(type="send_message", config={"template": "event_reminder", "timing": "-1h"})
-        ],
-        enabled=False,
-        run_count=0,
-        last_run=None,
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-    Workflow(
-        id="wf-004",
-        user_id="user-1",
-        name="AI Message Processing",
-        description="Automatically analyze incoming messages with AI for intent and entities",
-        trigger="on_message",
-        conditions=[
-            WorkflowCondition(field="direction", operator="equals", value="inbound")
-        ],
-        actions=[
-            WorkflowAction(type="ai_process", config={"extract_entities": True, "detect_intent": True})
-        ],
-        enabled=True,
-        run_count=156,
-        last_run=datetime.now().isoformat(),
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat()
-    ),
-]
+# Workflows come from user creation - no demo data
+workflows_db: List[Workflow] = []
 
-workflow_logs_db: List[WorkflowLog] = [
-    WorkflowLog(
-        id="log-001",
-        workflow_id="wf-001",
-        status="success",
-        trigger_data={"message_id": "msg-001", "contact": "Sarah"},
-        actions_executed=["send_message", "create_task"],
-        executed_at=datetime.now().isoformat()
-    ),
-    WorkflowLog(
-        id="log-002",
-        workflow_id="wf-004",
-        status="success",
-        trigger_data={"message_id": "msg-002"},
-        actions_executed=["ai_process"],
-        executed_at=datetime.now().isoformat()
-    ),
-]
+# Workflow execution logs
+workflow_logs_db: List[WorkflowLog] = []
+
+# Registered webhook endpoints
+webhook_endpoints: List[dict] = []
 
 
-# ============== ROUTES ==============
+# ============== WEBHOOK MODELS ==============
+
+import httpx
+
+
+class WebhookConfig(BaseModel):
+    name: str
+    url: str
+    secret: Optional[str] = None
+    events: List[str] = []  # Which events to send
+    active: bool = True
+
+
+class WebhookEvent(BaseModel):
+    event_type: str
+    payload: dict
+    timestamp: Optional[str] = None
+
+
+# ============== WEBHOOK ROUTES (must come before /{workflow_id}) ==============
+
+@router.get("/webhooks")
+async def get_webhooks():
+    """Get all registered webhook endpoints."""
+    return {"webhooks": webhook_endpoints}
+
+
+@router.post("/webhooks")
+async def register_webhook(config: WebhookConfig):
+    """Register a new webhook endpoint for outgoing events."""
+    webhook_id = f"wh-{uuid.uuid4().hex[:8]}"
+    webhook = {
+        "id": webhook_id,
+        "name": config.name,
+        "url": config.url,
+        "secret": config.secret,
+        "events": config.events,
+        "active": config.active,
+        "created_at": datetime.now().isoformat()
+    }
+    webhook_endpoints.append(webhook)
+    return webhook
+
+
+@router.delete("/webhooks/{webhook_id}")
+async def delete_webhook(webhook_id: str):
+    """Delete a webhook endpoint."""
+    global webhook_endpoints
+    for i, wh in enumerate(webhook_endpoints):
+        if wh["id"] == webhook_id:
+            webhook_endpoints.pop(i)
+            return {"status": "deleted", "id": webhook_id}
+    raise HTTPException(status_code=404, detail="Webhook not found")
+
+
+@router.post("/webhooks/ingest")
+async def webhook_ingest(event: WebhookEvent):
+    """
+    Ingest webhook from external sources (Zapier, n8n, Fanz, etc.)
+    This triggers matching workflows based on the event type.
+    """
+    event_type = event.event_type
+    payload = event.payload
+    timestamp = event.timestamp or datetime.now().isoformat()
+
+    # Find workflows that match this trigger
+    triggered_count = 0
+    for wf in workflows_db:
+        if wf.enabled and wf.trigger == "on_webhook" or event_type in [f"webhook:{wf.trigger}"]:
+            # Log the execution
+            log = WorkflowLog(
+                id=f"log-{uuid.uuid4().hex[:8]}",
+                workflow_id=wf.id,
+                status="success",
+                trigger_data=payload,
+                actions_executed=[a.type for a in wf.actions],
+                executed_at=timestamp
+            )
+            workflow_logs_db.append(log)
+            wf.run_count += 1
+            wf.last_run = timestamp
+            triggered_count += 1
+
+    return {
+        "status": "received",
+        "event_type": event_type,
+        "workflows_triggered": triggered_count,
+        "timestamp": timestamp
+    }
+
+
+@router.post("/webhooks/send/{webhook_id}")
+async def send_webhook_to_endpoint(webhook_id: str, event: WebhookEvent):
+    """Send an event to a specific webhook endpoint."""
+    webhook = next((wh for wh in webhook_endpoints if wh["id"] == webhook_id), None)
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+
+    if not webhook["active"]:
+        raise HTTPException(status_code=400, detail="Webhook is not active")
+
+    # Prepare payload
+    payload = {
+        "event": event.event_type,
+        "data": event.payload,
+        "timestamp": event.timestamp or datetime.now().isoformat(),
+        "source": "wickedcrm"
+    }
+
+    # Add signature if secret is configured
+    headers = {"Content-Type": "application/json"}
+    if webhook.get("secret"):
+        import hmac
+        import hashlib
+        import json
+        signature = hmac.new(
+            webhook["secret"].encode(),
+            json.dumps(payload).encode(),
+            hashlib.sha256
+        ).hexdigest()
+        headers["X-Webhook-Signature"] = f"sha256={signature}"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                webhook["url"],
+                json=payload,
+                headers=headers,
+                timeout=10.0
+            )
+            return {
+                "status": "sent",
+                "webhook_id": webhook_id,
+                "response_status": response.status_code
+            }
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send webhook: {str(e)}")
+
+
+@router.post("/webhooks/broadcast")
+async def broadcast_event(event: WebhookEvent):
+    """Broadcast an event to all active webhooks that subscribe to this event type."""
+    results = []
+    for webhook in webhook_endpoints:
+        if not webhook["active"]:
+            continue
+        # Check if webhook subscribes to this event type (empty = all events)
+        if webhook["events"] and event.event_type not in webhook["events"]:
+            continue
+
+        try:
+            result = await send_webhook_to_endpoint(webhook["id"], event)
+            results.append({"webhook_id": webhook["id"], "status": "sent"})
+        except Exception as e:
+            results.append({"webhook_id": webhook["id"], "status": "failed", "error": str(e)})
+
+    return {"broadcast_results": results, "total_sent": len([r for r in results if r["status"] == "sent"])}
+
+
+# ============== WORKFLOW ROUTES ==============
 
 @router.get("")
 async def get_workflows(
@@ -315,6 +390,7 @@ async def get_trigger_types():
             {"id": "on_schedule", "name": "On Schedule", "description": "Triggered at a specific time"},
             {"id": "on_tag_added", "name": "On Tag Added", "description": "Triggered when a tag is added to contact"},
             {"id": "on_payment", "name": "On Payment", "description": "Triggered when payment is received"},
+            {"id": "on_webhook", "name": "On Webhook", "description": "Triggered by incoming webhook from Fanz/Zapier/n8n"},
         ]
     }
 
@@ -332,5 +408,6 @@ async def get_action_types():
             {"id": "update_contact", "name": "Update Contact", "description": "Update contact information"},
             {"id": "trigger_webhook", "name": "Trigger Webhook", "description": "Call an external webhook"},
             {"id": "ai_process", "name": "AI Process", "description": "Process with AI for insights"},
+            {"id": "fanz_automation", "name": "Fanz Automation", "description": "Trigger Fanz platform automation"},
         ]
     }

@@ -20,39 +20,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { livekitApi } from '@/lib/livekit';
 import { useEffect } from 'react';
 
-const MOCK_THREADS: Thread[] = [
-  {
-    id: 'thread-1',
-    title: 'Fleet 12 Dispatch',
-    channel: 'PTT',
-    last: 'Inbound voice: “Loaded, heading to Bay 4”',
-    unread: true,
-    events: [
-      { id: 'e-1', type: 'voice', direction: 'inbound', body: 'Voice clip: Loaded, heading to Bay 4', channel: 'PTT', at: '10:14', meta: '00:12' },
-      { id: 'e-2', type: 'transcript', direction: 'inbound', body: 'Transcript: Loaded, heading to Bay 4. ETA 20 mins.', channel: 'AI', at: '10:14' },
-      { id: 'e-3', type: 'message', direction: 'outbound', body: 'Copy. Bay 4 is clear. Watch for detour on I-95.', channel: 'SMS', at: '10:15' },
-    ],
-  },
-  {
-    id: 'thread-2',
-    title: 'Ravenna (WhatsApp)',
-    channel: 'WhatsApp',
-    last: 'Inbound: “Can we move delivery up?”',
-    events: [
-      { id: 'e-4', type: 'message', direction: 'inbound', body: 'Can we move delivery up?', channel: 'WhatsApp', at: '09:52' },
-      { id: 'e-5', type: 'message', direction: 'outbound', body: 'Checking with dispatch now.', channel: 'WhatsApp', at: '09:55' },
-    ],
-  },
-  {
-    id: 'thread-3',
-    title: 'Shop Ops (Telegram)',
-    channel: 'Telegram',
-    last: 'Outbound: “Upload today’s route CSV”',
-    events: [
-      { id: 'e-6', type: 'message', direction: 'outbound', body: 'Upload today’s route CSV', channel: 'Telegram', at: '08:30' },
-    ],
-  },
-];
+// Empty default - threads come from API
+const EMPTY_THREADS: Thread[] = [];
 
 const CONNECTORS = [
   { id: 'ptt', label: 'CB / PTT (LiveKit)', status: 'required', desc: 'WebRTC SFU + TURN', icon: Radio },
@@ -86,16 +55,16 @@ export default function Communications() {
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
 
-  const { data: threads = MOCK_THREADS } = useQuery({
+  const { data: threads = EMPTY_THREADS } = useQuery({
     queryKey: ['threads'],
     queryFn: () => threadsApi.list({ limit: 50 }),
     retry: false,
     staleTime: 15_000,
   });
-  const hasThreads = threads.length > 0 && threads !== MOCK_THREADS;
+  const hasThreads = threads.length > 0;
 
   const selectedThread = useMemo(() => {
-    return threads.find((t) => t.id === selectedThreadId) || threads[0] || MOCK_THREADS[0];
+    return threads.find((t) => t.id === selectedThreadId) || threads[0] || null;
   }, [threads, selectedThreadId]);
 
   const { data: events = selectedThread?.events || [] } = useQuery<ThreadEvent[]>({
@@ -105,7 +74,14 @@ export default function Communications() {
     retry: false,
   });
 
-  const livekitConfigured = !!import.meta.env.VITE_LIVEKIT_URL;
+  // Fetch LiveKit config from backend
+  const { data: livekitConfig } = useQuery({
+    queryKey: ['livekit-config'],
+    queryFn: () => livekitApi.getConfig(),
+    retry: false,
+    staleTime: 60_000, // Cache for 1 minute
+  });
+  const livekitConfigured = livekitConfig?.configured && !!livekitConfig?.url;
   const wsBase = import.meta.env.VITE_WS_URL as string | undefined;
   const userId = user?.id || user?.email || 'anonymous';
   const roomId = selectedThread?.id || 'global';
@@ -181,10 +157,22 @@ export default function Communications() {
     try {
       const roomName = roomId;
       const identity = userId || 'anonymous';
-      const token = await livekitApi.getToken(roomName, identity);
-      // Lazy load livekit-client from CDN to avoid bundling/install failure
+      const { token, url } = await livekitApi.getToken(roomName, identity);
+
+      // Check if running in mobile WebView (Capacitor)
+      const isMobileApp = window.location.protocol === 'capacitor:' ||
+                          (window as any).Capacitor !== undefined;
+
+      if (isMobileApp) {
+        // Mobile apps need livekit-client bundled - show message for now
+        setPttError('PTT requires microphone permission. Please enable in Settings.');
+        toast.error('Voice features require app update. Use web version for PTT.');
+        return;
+      }
+
+      // Lazy load livekit-client from CDN for web browsers
       const lk = await import(/* @vite-ignore */ 'https://esm.sh/livekit-client@2.8.2');
-      const room = await lk.connect(import.meta.env.VITE_LIVEKIT_URL as string, token, {
+      const room = await lk.connect(url, token, {
         autoSubscribe: true,
       });
       const micTrack = await lk.createLocalAudioTrack();
@@ -194,9 +182,11 @@ export default function Communications() {
       setPttRoom(room);
       setPttReady(true);
       toast.success('PTT connected');
-    } catch (error) {
-      console.error('PTT join failed', error);
-      setPttError('PTT join failed');
+    } catch (error: any) {
+      console.error('PTT join failed', error?.message || error);
+      const errorMsg = error?.message || 'PTT join failed - check microphone permissions';
+      setPttError(errorMsg);
+      toast.error(errorMsg);
       await cleanupPtt();
     }
   };

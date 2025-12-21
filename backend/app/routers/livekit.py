@@ -24,6 +24,7 @@ class TokenRequest(BaseModel):
 class TokenResponse(BaseModel):
     """Response containing the access token."""
     token: str
+    url: str
 
 
 @router.post("/token", response_model=TokenResponse)
@@ -63,7 +64,16 @@ async def generate_token(request: TokenRequest):
     # Token expires in 6 hours
     jwt_token = token.to_jwt()
 
-    return TokenResponse(token=jwt_token)
+    return TokenResponse(token=jwt_token, url=settings.livekit_url or "")
+
+
+@router.get("/config")
+async def livekit_config():
+    """Get LiveKit configuration for frontend."""
+    return {
+        "configured": bool(settings.livekit_api_key and settings.livekit_api_secret),
+        "url": settings.livekit_url or None
+    }
 
 
 @router.get("/health")
