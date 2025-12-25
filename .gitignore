@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Build outputs
+dist/
+coverage/
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Archives
+*.zip
+
+# Old project folders
+boyfanz/
+boyfanz 2/
+workspace/
+workspace 2/
+
+# Archived workspaces (UUID folders)
+5cf4d76ca5a64b18b8cab0de56c76fd9/
+a6fb6b7e7f894179894cbfa62d250400/
+
+# Backup files
+*.backup
+*.backup.*
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.cache/
